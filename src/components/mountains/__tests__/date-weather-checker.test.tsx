@@ -37,23 +37,6 @@ describe("DateWeatherChecker", () => {
       weatherCode: 1,
     },
     climate: null,
-    history: {
-      periodStart: "2024-03-22",
-      periodEnd: "2026-03-21",
-      avgDailyPrecipitation: 2.1,
-      wetDayChance: 42,
-      targetMonthAvgPrecipitation: 1.8,
-      targetMonthWetDayChance: 37,
-      note: "Last 2 years suggest generally manageable rainfall patterns.",
-    },
-    consensus: {
-      primaryProvider: "Open-Meteo",
-      secondaryProvider: "Visual Crossing",
-      secondaryAvailable: false,
-      secondaryRecommendation: null,
-      agreement: "unavailable",
-      note: "Set VISUAL_CROSSING_API_KEY to enable secondary forecast consensus.",
-    },
     reliability: {
       selectedLabel: "3-day",
       selectedDays: 3,
@@ -71,6 +54,63 @@ describe("DateWeatherChecker", () => {
     },
   };
 
+  const climatePayload = {
+    date: "2026-04-30",
+    mode: "climate",
+    recommendation: null,
+    actionable: false,
+    confidence: "low",
+    reasons: ["Date is outside reliable daily forecast range."],
+    metrics: null,
+    climate: {
+      month: "April",
+      avgPrecipitation: 3.8,
+      wetDayChance: 42,
+      advisory: "Mixed month historically. Keep a backup date and monitor closer to your trip.",
+    },
+    reliability: {
+      selectedLabel: "30-day",
+      selectedDays: 30,
+      estimatedAccuracy: 45,
+      guidance: "Use climate/history guidance, not day-level trust.",
+      tiers: [
+        {
+          label: "30-day",
+          days: 30,
+          estimatedAccuracy: 45,
+          notes: "Use climate/history guidance, not day-level trust.",
+          reliesOnHistory: true,
+        },
+      ],
+    },
+  };
+
+  const climateDetailsPayload = {
+    date: "2026-04-30",
+    mode: "climate",
+    history: {
+      periodStart: "2024-04-01",
+      periodEnd: "2026-03-31",
+      avgDailyPrecipitation: 2.2,
+      wetDayChance: 40,
+      targetMonthAvgPrecipitation: 3.8,
+      targetMonthWetDayChance: 42,
+      targetDateAvgPrecipitation: 2.5,
+      targetDateWetDayChance: 50,
+      targetDateSamples: 2,
+      note: "Last 2 years show mixed conditions for this month. Recheck weather near hike day.",
+    },
+    consensus: {
+      primaryProvider: "Open-Meteo",
+      secondaryProvider: "Visual Crossing",
+      secondaryAvailable: false,
+      secondaryRecommendation: null,
+      secondaryMetrics: null,
+      agreement: "unavailable",
+      note: "Consensus is only generated for day-level forecast dates within 15 days.",
+    },
+  };
+
   it("shows recommendation after date check", async () => {
     vi.spyOn(global, "fetch").mockResolvedValue(new Response(JSON.stringify(mockPayload), { status: 200 }));
 
@@ -81,7 +121,7 @@ describe("DateWeatherChecker", () => {
       expect(screen.getByText("Good")).toBeInTheDocument();
       expect(screen.getByText(/Weather looks stable for hiking/)).toBeInTheDocument();
       expect(screen.getByText(/Good day for hiking/)).toBeInTheDocument();
-      expect(screen.getByText(/Pick one date to check/)).toBeInTheDocument();
+      expect(screen.getByText(/Exact forecast is day-specific up to 15 days/)).toBeInTheDocument();
       expect(screen.getByText(/Why this result/)).toBeInTheDocument();
       expect(screen.getAllByText(/How reliable/).length).toBeGreaterThan(0);
       expect(screen.getByText(/No rain expected/)).toBeInTheDocument();
@@ -156,6 +196,40 @@ describe("DateWeatherChecker", () => {
 
     await waitFor(() => {
       expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "auto", block: "start" });
+    });
+  });
+
+  it("uses month context in rain guidance when day-level forecast is unavailable", async () => {
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify(climatePayload), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(climateDetailsPayload), { status: 200 }));
+
+    render(<DateWeatherChecker lat={14.6} lon={121.1} initialDate="2026-04-30" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 3, name: /Planning outlook/i })).toBeInTheDocument();
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /More details/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("2-year history")).toBeInTheDocument();
+      expect(screen.getAllByText("42% wet days").length).toBeGreaterThan(0);
+      expect(screen.getByText(/Same date lately/)).toBeInTheDocument();
+      expect(screen.queryByText("Another forecast source")).not.toBeInTheDocument();
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenLastCalledWith("/api/weather/check/details?lat=14.6&lon=121.1&date=2026-04-30");
+
+    fireEvent.click(screen.getByRole("button", { name: /More details/i }));
+    fireEvent.click(screen.getByRole("button", { name: /More details/i }));
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
   });
 });

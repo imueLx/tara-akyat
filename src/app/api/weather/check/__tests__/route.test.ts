@@ -49,22 +49,19 @@ describe("GET /api/weather/check", () => {
       mode: string;
       recommendation: string | null;
       actionable: boolean;
-      history: unknown;
-      consensus: { primaryProvider: string };
       reliability: { selectedLabel: string };
     };
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("Server-Timing")).toMatch(/app;dur=/);
     expect(body.mode).toBe("forecast");
     expect(body.recommendation).toBe("Good");
     expect(body.actionable).toBe(true);
-    expect(body.history).toBeTruthy();
-    expect(body.consensus.primaryProvider).toBe("Open-Meteo");
     expect(body.reliability.selectedLabel).toBeTruthy();
   });
 
-  it("returns climate guidance for far dates", async () => {
-    const farDate = formatISODate(addDays(new Date(), 35));
+  it("returns planning outlook for dates beyond forecast range but within 30 days", async () => {
+    const farDate = formatISODate(addDays(new Date(), 23));
 
     vi.spyOn(global, "fetch")
       .mockResolvedValueOnce(
@@ -95,7 +92,6 @@ describe("GET /api/weather/check", () => {
       actionable: boolean;
       climate: unknown;
       reasons: string[];
-      history: { periodStart: string };
       reliability: { selectedLabel: string };
     };
 
@@ -103,8 +99,21 @@ describe("GET /api/weather/check", () => {
     expect(body.mode).toBe("climate");
     expect(body.actionable).toBe(false);
     expect(body.climate).toBeTruthy();
-    expect(body.history.periodStart).toBeTruthy();
-    expect(body.reliability.selectedLabel).toBe("35-day");
+    expect(body.reliability.selectedLabel).toBe("23-day");
     expect(body.reasons[0]).toContain("outside reliable daily forecast range");
+  });
+
+  it("returns 504 when upstream provider times out", async () => {
+    const timeoutError = new Error("The operation was aborted.");
+    timeoutError.name = "AbortError";
+    vi.spyOn(global, "fetch").mockRejectedValue(timeoutError);
+
+    const targetDate = formatISODate(addDays(new Date(), 1));
+    const request = new NextRequest(`http://localhost/api/weather/check?lat=16.6&lon=120.9&date=${targetDate}`);
+    const response = await GET(request);
+    const body = (await response.json()) as { error: string };
+
+    expect(response.status).toBe(504);
+    expect(body.error).toContain("taking too long");
   });
 });

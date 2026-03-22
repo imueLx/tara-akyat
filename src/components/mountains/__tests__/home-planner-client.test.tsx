@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { HomePlannerClient } from "@/components/mountains/home-planner-client";
 
@@ -47,28 +47,90 @@ const mountains = [
   },
 ];
 
+const originalScrollTo = window.scrollTo;
+
+const climatePayload = {
+  date: "2026-04-30",
+  mode: "climate",
+  recommendation: null,
+  actionable: false,
+  confidence: "low",
+  reasons: ["Date is outside reliable daily forecast range."],
+  metrics: null,
+  climate: {
+    month: "April",
+    avgPrecipitation: 3.8,
+    wetDayChance: 42,
+    advisory: "Mixed month historically. Keep a backup date and monitor closer to your trip.",
+  },
+  reliability: {
+    selectedLabel: "30-day",
+    selectedDays: 30,
+    estimatedAccuracy: 45,
+    guidance: "Use climate/history guidance, not day-level trust.",
+    tiers: [
+      {
+        label: "30-day",
+        days: 30,
+        estimatedAccuracy: 45,
+        notes: "Use climate/history guidance, not day-level trust.",
+        reliesOnHistory: true,
+      },
+    ],
+  },
+};
+
+const climateDetailsPayload = {
+  date: "2026-04-30",
+  mode: "climate",
+  history: {
+    periodStart: "2024-04-01",
+    periodEnd: "2026-03-31",
+    avgDailyPrecipitation: 2.2,
+    wetDayChance: 40,
+    targetMonthAvgPrecipitation: 3.8,
+    targetMonthWetDayChance: 42,
+    targetDateAvgPrecipitation: 2.5,
+    targetDateWetDayChance: 50,
+    targetDateSamples: 2,
+    note: "Last 2 years show mixed conditions for this month. Recheck weather near hike day.",
+  },
+  consensus: {
+    primaryProvider: "Open-Meteo",
+    secondaryProvider: "Visual Crossing",
+    secondaryAvailable: false,
+    secondaryRecommendation: null,
+    secondaryMetrics: null,
+    agreement: "unavailable",
+    note: "Consensus is only generated for day-level forecast dates.",
+  },
+};
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  window.scrollTo = originalScrollTo;
+});
+
 describe("HomePlannerClient", () => {
   it("supports combobox semantics and keyboard selection", async () => {
     render(<HomePlannerClient mountains={mountains} />);
 
     const combobox = screen.getByRole("combobox", { name: "Search mountains" });
-    expect(combobox).toHaveAttribute("aria-haspopup", "listbox");
+    expect(combobox).toHaveAttribute("aria-haspopup", "true");
+    expect(screen.getByText("Mt. Ulap • Benguet")).toBeInTheDocument();
 
     fireEvent.focus(combobox);
     fireEvent.change(combobox, { target: { value: "apo" } });
 
     await waitFor(() => {
-      expect(screen.getByRole("listbox", { name: "Mountain options" })).toBeInTheDocument();
       expect(screen.getByRole("option", { name: /Mt\. Apo/i })).toBeInTheDocument();
     });
 
-    fireEvent.keyDown(combobox, { key: "ArrowDown" });
     fireEvent.keyDown(combobox, { key: "Enter" });
 
     await waitFor(() => {
-      expect((combobox as HTMLInputElement).value).toBe("");
-      expect(screen.getAllByText("Mt. Apo").length).toBeGreaterThan(0);
-      expect(combobox).toHaveAttribute("aria-expanded", "false");
+      expect(screen.getByText("Mt. Apo • Davao del Sur")).toBeInTheDocument();
     });
   });
 
@@ -76,6 +138,7 @@ describe("HomePlannerClient", () => {
     render(<HomePlannerClient mountains={mountains} />);
 
     const combobox = screen.getByRole("combobox", { name: "Search mountains" });
+    fireEvent.focus(combobox);
 
     fireEvent.change(combobox, { target: { value: "mt pulag" } });
     await waitFor(() => {
@@ -85,6 +148,96 @@ describe("HomePlannerClient", () => {
     fireEvent.change(combobox, { target: { value: "unknown summit" } });
     await waitFor(() => {
       expect(screen.getByText("No mountain matches that search yet.")).toBeInTheDocument();
+    });
+  });
+
+  it("opens a default dropdown list on focus", async () => {
+    render(<HomePlannerClient mountains={mountains} />);
+
+    const combobox = screen.getByRole("combobox", { name: "Search mountains" });
+    expect(screen.getByText("Mt. Ulap • Benguet")).toBeInTheDocument();
+
+    fireEvent.focus(combobox);
+
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: /Mt\. Ulap/i })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: /Mt\. Apo/i })).toBeInTheDocument();
+    });
+  });
+
+  it("updates the selected mountain when clicking an option from the dropdown", async () => {
+    render(<HomePlannerClient mountains={mountains} />);
+
+    const combobox = screen.getByRole("combobox", { name: "Search mountains" });
+    fireEvent.focus(combobox);
+
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: /Mt\. Apo/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("option", { name: /Mt\. Apo/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Mt. Apo • Davao del Sur")).toBeInTheDocument();
+    });
+  });
+
+  it("shows month context instead of unavailable when day-level rain data is out of range", async () => {
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    window.scrollTo = vi.fn();
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify(climatePayload), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(climateDetailsPayload), { status: 200 }));
+
+    render(<HomePlannerClient mountains={mountains} initialDate="2026-04-30" />);
+    fireEvent.click(screen.getByRole("button", { name: /Check hiking weather/i }));
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /More details/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("2-year history")).toBeInTheDocument();
+      expect(screen.getAllByText("42% wet days").length).toBeGreaterThan(0);
+      expect(screen.getByText(/Same date lately/)).toBeInTheDocument();
+      expect(screen.queryByText("Another forecast source")).not.toBeInTheDocument();
+      expect(screen.queryByText("Day-level rain forecast is unavailable for this date range.")).not.toBeInTheDocument();
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenLastCalledWith("/api/weather/check/details?lat=16.4&lon=120.6&date=2026-04-30");
+  });
+
+  it("loads more details only once for repeated show or hide toggles", async () => {
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify(climatePayload), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(climateDetailsPayload), { status: 200 }));
+
+    render(<HomePlannerClient mountains={mountains} initialDate="2026-04-30" />);
+    fireEvent.click(screen.getByRole("button", { name: /Check hiking weather/i }));
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /More details/i }));
+    await waitFor(() => {
+      expect(screen.getByText("2-year history")).toBeInTheDocument();
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /More details/i }));
+    fireEvent.click(screen.getByRole("button", { name: /More details/i }));
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
   });
 });

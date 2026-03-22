@@ -3,14 +3,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
+import Select, { type SingleValue } from "react-select";
+import { useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { RecommendationPill } from "@/components/mountains/recommendation-pill";
 import { getMountainVerificationSummary } from "@/lib/content-quality";
 import { addDays, differenceInDays, formatISODate, isValidDate } from "@/lib/date";
 import { getSelectedReliability } from "@/lib/weather/reliability";
-import type { WeatherCheckResult } from "@/types/hiking";
+import type { WeatherCheckDetails, WeatherCheckResult } from "@/types/hiking";
 
 type PlannerMountain = {
   id: string;
@@ -39,6 +40,23 @@ type MetricTone = {
   pillClassName: string;
   valueClassName: string;
   accentClassName: string;
+};
+
+type GuidanceTone = {
+  label: string;
+  detail: string;
+  valueText: string;
+  containerClassName: string;
+  chipClassName: string;
+};
+
+const SECONDARY_SOURCE_LABEL = "Another forecast source";
+
+type MountainOption = {
+  value: string;
+  label: string;
+  mountain: PlannerMountain;
+  searchable: string;
 };
 
 function SectionIcon({ children }: { children: ReactNode }) {
@@ -148,15 +166,6 @@ function ThermometerIcon() {
   );
 }
 
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="9" cy="9" r="5.5" />
-      <path d="m13 13 3.5 3.5" />
-    </svg>
-  );
-}
-
 function formatReadableDate(value: string): string {
   if (!isValidDate(value)) {
     return value;
@@ -178,106 +187,6 @@ function normalizeMountainSearch(value: string): string {
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function mountainSearchTokens(value: string): string[] {
-  return normalizeMountainSearch(value).split(" ").filter(Boolean);
-}
-
-function mountainSearchScore(mountain: PlannerMountain, query: string): number {
-  if (!query) {
-    return 0;
-  }
-
-  const name = normalizeMountainSearch(mountain.name);
-  const province = normalizeMountainSearch(mountain.province);
-  const region = normalizeMountainSearch(mountain.region);
-  const haystack = `${name} ${province} ${region}`;
-  const tokens = mountainSearchTokens(query);
-
-  let score = 0;
-
-  if (name === query) {
-    score += 150;
-  }
-
-  if (haystack === query) {
-    score += 120;
-  }
-
-  if (name.startsWith(query)) {
-    score += 90;
-  }
-
-  if (province.startsWith(query)) {
-    score += 70;
-  }
-
-  if (region.startsWith(query)) {
-    score += 60;
-  }
-
-  if (haystack.includes(query)) {
-    score += 40;
-  }
-
-  for (const token of tokens) {
-    if (name.startsWith(token)) {
-      score += 18;
-    } else if (name.includes(token)) {
-      score += 12;
-    }
-
-    if (province.startsWith(token)) {
-      score += 10;
-    } else if (province.includes(token)) {
-      score += 6;
-    }
-
-    if (region.startsWith(token)) {
-      score += 10;
-    } else if (region.includes(token)) {
-      score += 6;
-    }
-  }
-
-  return score;
-}
-
-function quickPickScore(mountain: PlannerMountain, selectedMountain: PlannerMountain | null): number {
-  if (!selectedMountain) {
-    return 0;
-  }
-
-  let score = 0;
-
-  if (mountain.province === selectedMountain.province) {
-    score += 4;
-  }
-
-  if (mountain.region === selectedMountain.region) {
-    score += 2;
-  }
-
-  score -= Math.abs(mountain.difficulty_score - selectedMountain.difficulty_score) / 100;
-
-  return score;
-}
-
-function mountainRelationshipLabel(mountain: PlannerMountain, selectedMountain: PlannerMountain | null): string | null {
-  if (!selectedMountain) {
-    return null;
-  }
-
-  if (mountain.province === selectedMountain.province) {
-    return "Same province";
-  }
-
-  if (mountain.region === selectedMountain.region) {
-    return "Same region";
-  }
-
-  return null;
 }
 
 function tomorrowIso(): string {
@@ -494,32 +403,91 @@ function feelsLikeTone(value: number): MetricTone {
   };
 }
 
-function rainAmountMeaning(value: number): string {
-  if (value <= 0) {
-    return "No rain expected";
+function historySummary(details: WeatherCheckDetails): string {
+  if (details.history.targetMonthWetDayChance >= 55) {
+    return "This month has often been wet lately, but that does not mean your date will rain.";
   }
 
-  if (value < 2) {
-    return "Light rain amount";
+  if (details.history.targetMonthWetDayChance >= 35) {
+    return "This month has had mixed wet and dry patterns lately.";
   }
 
-  if (value < 8) {
-    return "Moderate rain amount";
-  }
-
-  return "Heavy rain amount";
+  return "This month has generally been drier lately.";
 }
 
-function wetMonthMeaning(wetDayChance: number): string {
+function historyContextTone(wetDayChance: number): GuidanceTone {
   if (wetDayChance >= 55) {
-    return "Historically wet month";
+    return {
+      containerClassName: "border-sky-200 bg-sky-50",
+      chipClassName: "bg-sky-100 text-sky-800",
+      label: "Historically wet",
+      detail: "Recent history only. Not a live forecast.",
+      valueText: `${wetDayChance}% wet days`,
+    };
   }
 
   if (wetDayChance >= 35) {
-    return "Mixed rain month";
+    return {
+      containerClassName: "border-amber-200 bg-amber-50",
+      chipClassName: "bg-amber-100 text-amber-800",
+      label: "Mixed month",
+      detail: "Recent history only. Not a live forecast.",
+      valueText: `${wetDayChance}% wet days`,
+    };
   }
 
-  return "Usually drier month";
+  return {
+    containerClassName: "border-emerald-200 bg-emerald-50",
+    chipClassName: "bg-emerald-100 text-emerald-800",
+    label: "Usually drier",
+    detail: "Recent history only. Not a live forecast.",
+    valueText: `${wetDayChance}% wet days`,
+  };
+}
+
+function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
+  const secondaryMetrics = details.consensus.secondaryMetrics;
+
+  if (!secondaryMetrics) {
+    return {
+      containerClassName: "border-slate-200 bg-white",
+      chipClassName: "bg-slate-100 text-slate-700",
+      label: "Unavailable",
+      detail: details.consensus.note,
+      valueText: details.consensus.secondaryAvailable ? "No secondary weather detail" : "Secondary provider not connected",
+    };
+  }
+
+  const rainChance = secondaryMetrics.precipitationProbability;
+  const rainMm = secondaryMetrics.precipitationSum;
+
+  if (rainChance >= 70 || rainMm >= 8) {
+    return {
+      containerClassName: "border-sky-200 bg-sky-50",
+      chipClassName: "bg-sky-100 text-sky-800",
+      label: "Wet signal",
+      detail: `${SECONDARY_SOURCE_LABEL} cross-check for the same selected date.`,
+      valueText: `${rainChance}% chance, ${rainMm} mm`,
+    };
+  }
+
+  if (rainChance >= 35 || rainMm >= 2) {
+    return {
+      containerClassName: "border-amber-200 bg-amber-50",
+      chipClassName: "bg-amber-100 text-amber-800",
+      label: "Mixed signal",
+      detail: `${SECONDARY_SOURCE_LABEL} cross-check for the same selected date.`,
+      valueText: `${rainChance}% chance, ${rainMm} mm`,
+    };
+  }
+
+  return {
+    containerClassName: "border-emerald-200 bg-emerald-50",
+    chipClassName: "bg-emerald-100 text-emerald-800",
+    label: "Dry signal",
+    detail: `${SECONDARY_SOURCE_LABEL} cross-check for the same selected date.`,
+    valueText: `${rainChance}% chance, ${rainMm} mm`,
+  };
 }
 
 function compactReasons(result: WeatherCheckResult): string[] {
@@ -544,6 +512,21 @@ function LoadingHomeResult() {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function LoadingMoreDetails() {
+  return (
+    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2" role="status" aria-live="polite" aria-label="Loading more weather details">
+      {Array.from({ length: 2 }).map((_, index) => (
+        <div key={`home-detail-skeleton-${index}`} className="animate-pulse rounded-[24px] border border-slate-200 bg-white px-4 py-4">
+          <div className="h-3 w-28 rounded-full bg-slate-200" />
+          <div className="mt-3 h-5 w-32 rounded-full bg-slate-200" />
+          <div className="mt-2 h-4 w-full rounded-full bg-slate-100" />
+          <div className="mt-2 h-4 w-10/12 rounded-full bg-slate-100" />
+        </div>
+      ))}
     </div>
   );
 }
@@ -615,94 +598,52 @@ function scheduleResultScroll(target: HTMLElement | null) {
 export function HomePlannerClient({ mountains, initialDate }: Props) {
   const startingDate = initialDate && isValidDate(initialDate) ? initialDate : tomorrowIso();
   const [mountainId, setMountainId] = useState(mountains[0]?.id ?? "");
-  const [mountainQuery, setMountainQuery] = useState("");
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const [activeOptionIndex, setActiveOptionIndex] = useState(0);
+  const [isMountainPickerFocused, setIsMountainPickerFocused] = useState(false);
   const [date, setDate] = useState(startingDate);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<WeatherCheckResult | null>(null);
+  const [details, setDetails] = useState<WeatherCheckDetails | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [announceMessage, setAnnounceMessage] = useState("");
   const [showMoreDetails, setShowMoreDetails] = useState(false);
 
-  const comboboxWrapRef = useRef<HTMLDivElement | null>(null);
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const primaryDecisionRef = useRef<HTMLElement | null>(null);
-  const listboxId = useId();
-  const deferredMountainQuery = useDeferredValue(mountainQuery);
 
   const selectedMountain = useMemo(
     () => mountains.find((mountain) => mountain.id === mountainId) ?? null,
     [mountainId, mountains],
   );
   const verification = selectedMountain ? getMountainVerificationSummary(selectedMountain) : null;
-
-  const quickMountainPicks = useMemo(
+  const mountainOptions = useMemo<MountainOption[]>(
     () =>
-      mountains
-        .filter((mountain) => mountain.id !== mountainId)
-        .sort((a, b) => {
-          const scoreDifference = quickPickScore(b, selectedMountain) - quickPickScore(a, selectedMountain);
-          return scoreDifference || a.name.localeCompare(b.name);
-        })
-        .slice(0, 8),
-    [mountainId, mountains, selectedMountain],
+      mountains.map((mountain) => ({
+        value: mountain.id,
+        label: mountain.name,
+        mountain,
+        searchable: normalizeMountainSearch(`${mountain.name} ${mountain.province} ${mountain.region}`),
+      })),
+    [mountains],
   );
-
-  const pickerOptions = useMemo(() => {
-    const query = normalizeMountainSearch(deferredMountainQuery);
-
-    if (!query) {
-      return quickMountainPicks;
-    }
-
-    return mountains
-      .filter((mountain) => mountain.id !== mountainId)
-      .map((mountain) => ({ mountain, score: mountainSearchScore(mountain, query) }))
-      .filter(({ score }) => score > 0)
-      .sort((a, b) => b.score - a.score || a.mountain.name.localeCompare(b.mountain.name))
-      .slice(0, 10)
-      .map(({ mountain }) => mountain);
-  }, [deferredMountainQuery, mountainId, mountains, quickMountainPicks]);
-
-  const normalizedImmediateQuery = normalizeMountainSearch(mountainQuery);
-  const normalizedDeferredQuery = normalizeMountainSearch(deferredMountainQuery);
-  const isFiltering = normalizedImmediateQuery !== normalizedDeferredQuery;
-  const hasMountainQuery = mountainQuery.trim().length > 0;
-  const shouldShowOptions = isPickerOpen || mountainQuery.trim().length > 0 || isFiltering;
-  const activeMountain = pickerOptions[activeOptionIndex] ?? null;
-  const activeOptionId = !isFiltering && activeMountain ? `${listboxId}-${activeMountain.id}` : undefined;
-  const pickerSummary =
-    isFiltering
-      ? "Filtering mountains..."
-      : hasMountainQuery
-        ? `${pickerOptions.length} search result${pickerOptions.length === 1 ? "" : "s"}`
-        : `${pickerOptions.length} quick pick${pickerOptions.length === 1 ? "" : "s"}`;
-  const pickerSupportCopy =
-    hasMountainQuery
-      ? "Match by mountain name, province, or region."
-      : selectedMountain
-        ? `Quick picks prioritize ${selectedMountain.province} and nearby alternatives.`
-        : `${mountains.length} mountains ready to search.`;
-  const searchPromptChips = useMemo(() => {
-    const suggestions = [
-      selectedMountain?.province,
-      selectedMountain?.region,
-      quickMountainPicks[0]?.name,
-      quickMountainPicks[0]?.province,
-      quickMountainPicks[1]?.region,
-    ].filter((value): value is string => Boolean(value));
-
-    return Array.from(new Set(suggestions)).slice(0, 4);
-  }, [quickMountainPicks, selectedMountain]);
+  const selectedOption = useMemo(
+    () => mountainOptions.find((option) => option.value === mountainId) ?? null,
+    [mountainId, mountainOptions],
+  );
+  const selectMenuPortalTarget = typeof document === "undefined" ? undefined : document.body;
 
   const todayIso = formatISODate(new Date());
   const daysAhead = Math.max(0, differenceInDays(new Date(`${date}T00:00:00`), new Date(`${todayIso}T00:00:00`)));
   const selectedReliability = getSelectedReliability(daysAhead);
   const confidenceHint =
-    daysAhead <= 15
-      ? "Selected date still uses day-level forecast data."
-      : "Selected date uses lower-confidence month history guidance.";
+    daysAhead <= 7
+      ? "Best range for go or no-go planning."
+      : daysAhead <= 15
+        ? "Selected date still uses day-level forecast data, but confidence is lower than the next 7 days."
+        : daysAhead <= 30
+          ? "Days 16 to 30 use month-based planning outlook instead of exact day-level forecast."
+          : "Beyond 30 days uses the same calendar date from the last 2 years plus month context for planning.";
 
   const metricGuides = useMemo(() => {
     if (!result?.metrics) {
@@ -716,91 +657,27 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
       feelsLike: feelsLikeTone(result.metrics.apparentTemperatureMax),
     };
   }, [result]);
-
-  useEffect(() => {
-    function onPointerDown(event: PointerEvent) {
-      if (!comboboxWrapRef.current?.contains(event.target as Node)) {
-        setIsPickerOpen(false);
-        setActiveOptionIndex(0);
-      }
+  const secondaryGuidance = useMemo(() => (details ? secondaryForecastTone(details) : null), [details]);
+  const historyGuidance = useMemo(
+    () => (details ? historyContextTone(details.history.targetMonthWetDayChance) : null),
+    [details],
+  );
+  const detailsDaysAhead = useMemo(() => {
+    if (!details) {
+      return null;
     }
 
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-    };
-  }, []);
+    return differenceInDays(new Date(`${details.date}T00:00:00`), new Date(`${todayIso}T00:00:00`));
+  }, [details, todayIso]);
+  const shouldShowSecondaryForecastCard = detailsDaysAhead !== null && detailsDaysAhead <= 7;
 
-  useEffect(() => {
-    if (activeOptionIndex > pickerOptions.length - 1) {
-      setActiveOptionIndex(0);
-    }
-  }, [activeOptionIndex, pickerOptions.length]);
-
-  function onMountainSearch(query: string) {
-    setMountainQuery(query);
-    setIsPickerOpen(true);
-    setActiveOptionIndex(0);
-  }
-
-  function selectMountain(mountain: PlannerMountain) {
-    setMountainId(mountain.id);
-    setMountainQuery("");
-    setIsPickerOpen(false);
-    setActiveOptionIndex(0);
-    setAnnounceMessage(`${mountain.name} selected`);
-  }
-
-  function onMountainSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (isFiltering) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setIsPickerOpen(false);
-        setActiveOptionIndex(0);
-      }
+  function onMountainPickerChange(nextOption: SingleValue<MountainOption>) {
+    if (!nextOption) {
       return;
     }
 
-    if (!shouldShowOptions && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
-      event.preventDefault();
-      setIsPickerOpen(true);
-      setActiveOptionIndex(0);
-      return;
-    }
-
-    if (!pickerOptions.length) {
-      if (event.key === "Escape") {
-        setIsPickerOpen(false);
-      }
-      return;
-    }
-
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      setActiveOptionIndex((current) => (current + 1) % pickerOptions.length);
-      return;
-    }
-
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setActiveOptionIndex((current) => (current - 1 + pickerOptions.length) % pickerOptions.length);
-      return;
-    }
-
-    if (event.key === "Enter") {
-      event.preventDefault();
-      const picked = pickerOptions[activeOptionIndex] ?? pickerOptions[0];
-      if (picked) {
-        selectMountain(picked);
-      }
-      return;
-    }
-
-    if (event.key === "Escape") {
-      event.preventDefault();
-      setIsPickerOpen(false);
-      setActiveOptionIndex(0);
-    }
+    setMountainId(nextOption.value);
+    setAnnounceMessage(`${nextOption.label} selected`);
   }
 
   async function onCheck() {
@@ -810,6 +687,9 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
 
     setLoading(true);
     setError(null);
+    setDetails(null);
+    setDetailsError(null);
+    setShowMoreDetails(false);
 
     try {
       const response = await fetch(`/api/weather/check?lat=${selectedMountain.lat}&lon=${selectedMountain.lon}&date=${date}`);
@@ -821,8 +701,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
 
       const parsed = data as WeatherCheckResult;
       setResult(parsed);
-      setShowMoreDetails(parsed.mode === "climate");
-      const verdict = parsed.recommendation ?? "Planning guidance";
+      const verdict = parsed.recommendation ?? "Planning outlook";
       setAnnounceMessage(`${verdict}. Forecast confidence ${parsed.reliability.estimatedAccuracy} percent.`);
       requestAnimationFrame(() => {
         window.setTimeout(() => {
@@ -836,6 +715,40 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
       setAnnounceMessage(message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadMoreDetails() {
+    if (!selectedMountain || !result || detailsLoading || details) {
+      return;
+    }
+
+    setDetailsLoading(true);
+    setDetailsError(null);
+
+    try {
+      const response = await fetch(`/api/weather/check/details?lat=${selectedMountain.lat}&lon=${selectedMountain.lon}&date=${result.date}`);
+      const data = (await response.json()) as WeatherCheckDetails | { error: string };
+
+      if (!response.ok) {
+        throw new Error("error" in data ? data.error : "Unable to load more details right now.");
+      }
+
+      setDetails(data as WeatherCheckDetails);
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : "Unable to load more details right now.";
+      setDetailsError(message);
+    } finally {
+      setDetailsLoading(false);
+    }
+  }
+
+  function onToggleMoreDetails() {
+    const nextOpen = !showMoreDetails;
+    setShowMoreDetails(nextOpen);
+
+    if (nextOpen) {
+      void loadMoreDetails();
     }
   }
 
@@ -894,7 +807,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                           ? "Possible, but use caution"
                           : result.recommendation === "Not Recommended"
                             ? "Not recommended for hiking"
-                            : "Planning guidance only"}
+                            : "Planning outlook"}
                     </h4>
                     <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-700 sm:text-base">{resultSummary(result)}</p>
                   </div>
@@ -963,19 +876,14 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
 
               <article className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
-                      T
-                    </span>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <SectionIcon>
-                          <ShieldIcon />
-                        </SectionIcon>
-                        <p className="text-sm font-semibold text-slate-950">How reliable</p>
-                      </div>
-                      <p className="ml-10 text-xs text-slate-500">{selectedReliability.label} outlook</p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <SectionIcon>
+                        <ShieldIcon />
+                      </SectionIcon>
+                      <p className="text-sm font-semibold text-slate-950">How reliable</p>
                     </div>
+                    <p className="ml-10 text-xs text-slate-500">{selectedReliability.label} outlook</p>
                   </div>
                   <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${reliabilityTone(result.reliability.estimatedAccuracy)}`}>
                     {result.reliability.estimatedAccuracy >= 85 ? "High trust" : result.reliability.estimatedAccuracy >= 65 ? "Moderate trust" : "Low trust"}
@@ -988,7 +896,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
               <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
                 <button
                   type="button"
-                  onClick={() => setShowMoreDetails((current) => !current)}
+                  onClick={onToggleMoreDetails}
                   aria-expanded={showMoreDetails}
                   className="flex w-full items-center justify-between gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2"
                 >
@@ -999,7 +907,8 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                       </SectionIcon>
                       <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">More details</p>
                     </div>
-                    <p className="mt-1 text-sm font-semibold text-slate-950">Selected-date rain and 2-year month history</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-950">Forecast cross-check and 2-year history</p>
+                    <p className="mt-2 text-xs leading-5 text-slate-500">The top card cross-checks another provider when available. The history side is background context, not a live forecast.</p>
                     {result.mode === "climate" ? (
                       <p className="mt-2 text-xs leading-5 text-amber-700">
                         Recommended for this result. This date is outside day-level forecast range.
@@ -1017,46 +926,62 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                   </span>
                 </button>
 
-                {showMoreDetails ? (
-                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <article className="rounded-[24px] border border-sky-200 bg-sky-50 px-4 py-4">
-                      <div className="flex items-center gap-2">
-                        <SectionIcon>
-                          <CalendarIcon />
-                        </SectionIcon>
-                        <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Selected date</p>
-                      </div>
-                      <p className="mt-2 text-lg font-semibold text-slate-950">{formatReadableDate(result.date)}</p>
-                      {result.metrics ? (
-                        <span className="mt-2 inline-flex rounded-full border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-sky-800">
-                          {rainAmountMeaning(result.metrics.precipitationSum)}
+                {showMoreDetails ? detailsLoading ? (
+                  <LoadingMoreDetails />
+                ) : detailsError ? (
+                  <p className="mt-4 rounded-[24px] bg-rose-50 px-4 py-4 text-sm text-rose-700">{detailsError}</p>
+                ) : details ? (
+                  <div className={`mt-4 grid grid-cols-1 gap-3 ${shouldShowSecondaryForecastCard ? "sm:grid-cols-2" : ""}`}>
+                    {shouldShowSecondaryForecastCard ? (
+                      <article className={`rounded-[24px] border px-4 py-4 ${secondaryGuidance?.containerClassName ?? "border-sky-200 bg-sky-50"}`}>
+                        <div className="flex items-center gap-2">
+                          <SectionIcon>
+                            <CalendarIcon />
+                          </SectionIcon>
+                          <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Another forecast source</p>
+                        </div>
+                        <p className="mt-2 text-lg font-semibold text-slate-950">
+                          Secondary check
+                          {details.consensus.secondaryRecommendation ? ` says ${details.consensus.secondaryRecommendation}` : ""}
+                        </p>
+                        <span className={`mt-2 inline-flex rounded-full border border-white/70 px-2.5 py-1 text-[11px] font-semibold ${secondaryGuidance?.chipClassName ?? "bg-white text-sky-800"}`}>
+                          {secondaryGuidance?.label ?? "No data"}
                         </span>
-                      ) : null}
-                      <p className="mt-2 text-sm leading-6 text-slate-600">
-                        {result.metrics
-                          ? `${result.metrics.precipitationProbability}% rain chance with ${result.metrics.precipitationSum} mm forecast rain.`
-                          : "Day-level rain forecast is unavailable for this date range."}
-                      </p>
-                    </article>
+                        <p className="mt-2 text-sm font-semibold text-slate-950">{secondaryGuidance?.valueText ?? "Unavailable"}</p>
+                        <p className="mt-2 break-words text-sm leading-6 text-slate-600">{secondaryGuidance?.detail ?? "Secondary forecast guidance is unavailable right now."}</p>
+                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                          Primary forecast above is from the main forecast source. This card checks the same date with another forecast source.
+                        </p>
+                      </article>
+                    ) : null}
 
-                    <article className="rounded-[24px] border border-amber-200 bg-amber-50 px-4 py-4">
+                    <article className={`rounded-[24px] border px-4 py-4 ${historyGuidance?.containerClassName ?? "border-amber-200 bg-amber-50"}`}>
                       <div className="flex items-center gap-2">
                         <SectionIcon>
                           <BookIcon />
                         </SectionIcon>
-                        <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">2-year month history</p>
+                        <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">2-year history</p>
                       </div>
-                      <p className="mt-2 text-lg font-semibold text-slate-950">{result.history.targetMonthWetDayChance}% wet days</p>
-                      <span className="mt-2 inline-flex rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-800">
-                        {wetMonthMeaning(result.history.targetMonthWetDayChance)}
+                      <p className="mt-2 text-lg font-semibold text-slate-950">{historyGuidance?.valueText ?? "Unavailable"}</p>
+                      <span className="mt-2 inline-flex rounded-full border border-white/70 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                        {historyGuidance?.label ?? "No data"}
                       </span>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">
-                        Around {result.history.targetMonthAvgPrecipitation} mm average rain for this target month in the last 2 years.
+                      <p className="mt-2 break-words text-sm leading-6 text-slate-600">
+                        {historyGuidance?.detail ?? historySummary(details)}
                       </p>
-                      <p className="mt-2 text-xs leading-5 text-slate-500">{result.history.note}</p>
+                      <div className="mt-3 rounded-[20px] border border-white/80 bg-white/70 px-3 py-3">
+                        <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Same date lately</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-950">
+                          {details.history.targetDateWetDayChance}% wet days, around {details.history.targetDateAvgPrecipitation} mm
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-slate-600">
+                          History only, not a live forecast.
+                        </p>
+                      </div>
+                      <p className="mt-2 break-words text-xs leading-5 text-slate-500">{details.history.note}</p>
                     </article>
                   </div>
-                ) : null}
+                ) : null : null}
               </section>
 
               {result.mode === "climate" && !showMoreDetails ? (
@@ -1088,208 +1013,110 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
         </div>
 
         <aside className="order-1 border-b border-slate-200/80 bg-[linear-gradient(180deg,#f8fbff_0%,#f1f8f5_100%)] p-4 sm:p-5 xl:order-2 xl:border-b-0 xl:border-l">
-          <div className="rounded-[28px] border border-white/80 bg-white/80 p-4 shadow-sm">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-sky-700">Weather check</p>
-            <h2 className="mt-2 text-2xl font-semibold leading-tight text-slate-950">Choose a mountain and see if the day looks hike-friendly.</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Minimal, fast, and made for quick hiking decisions on your phone.</p>
+          <div className="space-y-3">
+            <section className="relative overflow-hidden rounded-[30px] border border-sky-100 bg-[radial-gradient(circle_at_top_left,rgba(186,230,253,0.35),transparent_36%),linear-gradient(160deg,#ffffff_0%,#f7fbff_52%,#eef9f3_100%)] p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+              <div className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full bg-sky-100/70 blur-2xl" aria-hidden="true" />
+              <div className="pointer-events-none absolute -bottom-10 left-6 h-24 w-24 rounded-full bg-emerald-100/70 blur-2xl" aria-hidden="true" />
 
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Best use</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">3 to 7 days</p>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Long range</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">History guided</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            <section className="rounded-[28px] border border-slate-200 bg-white p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">Choose mountain</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">Search {mountains.length} mountains by name, province, or region.</p>
+              <div className="relative z-10">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.14em] text-sky-700">Choose mountain</p>
+                    <p className="mt-2 max-w-xs text-sm leading-6 text-slate-600">Search {mountains.length} mountains by name, province, or region.</p>
+                  </div>
+                  <Link
+                    href="/mountains"
+                    className="inline-flex shrink-0 rounded-full border border-white/80 bg-white/80 px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:bg-white"
+                  >
+                    Browse all
+                  </Link>
                 </div>
-                <Link
-                  href="/mountains"
-                  className="inline-flex shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
-                >
-                  Browse all
-                </Link>
-              </div>
 
-              {selectedMountain ? (
-                <div className="mt-3 rounded-2xl border border-emerald-200 bg-[linear-gradient(135deg,#f8fffb_0%,#effcf5_100%)] px-3 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[11px] uppercase tracking-[0.12em] text-emerald-700">Current pick</p>
-                      <p className="mt-1 truncate text-sm font-semibold text-slate-950">{selectedMountain.name}</p>
-                      <p className="mt-1 text-xs text-slate-600">
-                        {selectedMountain.province}, {selectedMountain.region}
-                      </p>
+                <div className="mt-4 rounded-[26px] border border-white/80 bg-white/75 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_14px_24px_rgba(148,163,184,0.12)] backdrop-blur">
+                  <div className="flex items-center justify-between gap-3 px-1">
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">Mountain finder</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-950">{selectedMountain ? selectedMountain.province : "Start with your next hike"}</p>
                     </div>
-                    <span className="rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                    <span className="rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-semibold text-sky-800">
                       Ready
                     </span>
                   </div>
-                </div>
-              ) : null}
 
-              <div ref={comboboxWrapRef} className="mt-3">
-                <div className="rounded-[24px] border border-sky-200/80 bg-[linear-gradient(180deg,#f8fcff_0%,#eef7ff_100%)] p-3 shadow-[0_14px_28px_rgba(14,165,233,0.08)]">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-sky-700">Mountain search</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-950">Find a mountain fast</p>
-                    </div>
-                    <span className="rounded-full border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-sky-800">
-                      {hasMountainQuery ? "Searching" : "Quick search"}
-                    </span>
-                  </div>
-
-                  <div className="relative mt-3">
-                    <span
-                      className="pointer-events-none absolute left-3 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl bg-sky-100 text-sky-700 shadow-sm"
-                      aria-hidden="true"
-                    >
-                      <SearchIcon />
-                    </span>
-                    <input
-                      id="home-mountain-search"
-                      type="search"
-                      role="combobox"
+                  <div className="mt-3">
+                    <Select<MountainOption, false>
+                      instanceId="home-mountain-select"
+                      inputId="home-mountain-search"
                       aria-label="Search mountains"
-                      aria-autocomplete="list"
-                      aria-haspopup="listbox"
-                      aria-expanded={shouldShowOptions}
-                      aria-controls={listboxId}
-                      aria-activedescendant={activeOptionId}
-                      aria-describedby="mountain-picker-hint"
-                      value={mountainQuery}
-                      onChange={(event) => onMountainSearch(event.target.value)}
-                      onFocus={() => setIsPickerOpen(true)}
-                      onKeyDown={onMountainSearchKeyDown}
-                      placeholder="Search mountain, province, or region"
-                      autoComplete="off"
-                      className="w-full rounded-2xl border border-sky-200 bg-white py-3.5 pl-14 pr-16 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_10px_20px_rgba(148,163,184,0.12)] outline-none ring-sky-300 transition placeholder:text-slate-400 focus:border-sky-300 focus:ring focus-visible:ring-2"
-                    />
-                    {mountainQuery ? (
-                      <button
-                        type="button"
-                        onClick={() => onMountainSearch("")}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl border border-sky-200 bg-white px-2.5 py-1 text-xs font-medium text-sky-700 shadow-sm transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
-                      >
-                        Clear
-                      </button>
-                    ) : null}
-                  </div>
+                      options={mountainOptions}
+                      value={selectedOption}
+                      onChange={onMountainPickerChange}
+                      onFocus={() => setIsMountainPickerFocused(true)}
+                      onBlur={() => setIsMountainPickerFocused(false)}
+                      isSearchable
+                      openMenuOnFocus
+                      openMenuOnClick
+                      controlShouldRenderValue={!isMountainPickerFocused}
+                      placeholder="Search mountain, province, or region..."
+                      noOptionsMessage={() => "No mountain matches that search yet."}
+                      menuPortalTarget={selectMenuPortalTarget}
+                      menuPosition="fixed"
+                      menuPlacement="auto"
+                      unstyled
+                      filterOption={({ data }, searchText) => {
+                        if (!searchText.trim()) {
+                          return true;
+                        }
 
-                  {searchPromptChips.length > 0 ? (
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">Try</span>
-                      {searchPromptChips.map((term) => (
-                        <button
-                          key={term}
-                          type="button"
-                          onClick={() => onMountainSearch(term)}
-                          className="rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-sky-800 transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
-                        >
-                          {term}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
+                        const normalizedSearch = normalizeMountainSearch(searchText);
+                        if (!normalizedSearch) {
+                          return true;
+                        }
 
-                <div id="mountain-picker-hint" className="mt-2 flex items-start justify-between gap-3 px-1 text-[11px] text-slate-500">
-                  <div>
-                    <p className="font-medium text-slate-600">{hasMountainQuery ? "Search results" : "Quick picks"}</p>
-                    <p className="mt-0.5">{isFiltering ? "Updating mountain results..." : `${pickerSummary} • ${pickerSupportCopy}`}</p>
-                  </div>
-                  <span className="shrink-0 text-right">Use arrows + Enter or tap</span>
-                </div>
-
-                {shouldShowOptions ? (
-                  <ul
-                    id={listboxId}
-                    role="listbox"
-                    aria-label="Mountain options"
-                    aria-busy={isFiltering}
-                    className="mt-2 max-h-60 space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2"
-                  >
-                    {isFiltering ? (
-                      <li className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-500">
-                        Updating mountain results...
-                      </li>
-                    ) : pickerOptions.length > 0 ? (
-                      pickerOptions.map((mountain, index) => {
-                        const isActive = index === activeOptionIndex;
-                        const optionId = `${listboxId}-${mountain.id}`;
-                        const relationshipLabel = mountainRelationshipLabel(mountain, selectedMountain);
-
-                        return (
-                          <li
-                            key={mountain.id}
-                            id={optionId}
-                            role="option"
-                            aria-selected={isActive}
-                            onMouseDown={(event) => {
-                              event.preventDefault();
-                            }}
-                            onClick={() => selectMountain(mountain)}
-                            className={`cursor-pointer rounded-2xl border px-3 py-3 text-left transition ${
-                              isActive
-                                ? "border-sky-300 bg-sky-50 shadow-sm ring-1 ring-sky-200"
-                                : "border-slate-200 bg-white hover:bg-slate-50"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p className="text-sm font-semibold text-slate-900">{mountain.name}</p>
-                                  {relationshipLabel ? (
-                                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
-                                      {relationshipLabel}
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <p className="mt-1 text-xs text-slate-500">
-                                  {mountain.province}, {mountain.region}
-                                </p>
-                                <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-600">{mountain.summary}</p>
-                              </div>
-                              <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${isActive ? "bg-sky-100 text-sky-800" : "bg-slate-100 text-slate-600"}`}>
-                                {isActive ? "Enter" : "Choose"}
-                              </span>
-                            </div>
-                          </li>
-                        );
-                      })
-                    ) : (
-                      <li className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-500">
-                        <p className="font-medium text-slate-700">No mountain matches that search yet.</p>
-                        <p className="mt-1 text-xs leading-5 text-slate-500">Try a different mountain name, province, or region keyword.</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => onMountainSearch("")}
-                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
-                          >
-                            Show quick picks
-                          </button>
-                          <Link
-                            href="/mountains"
-                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
-                          >
-                            Browse mountain list
-                          </Link>
+                        return data.searchable.includes(normalizedSearch);
+                      }}
+                      formatOptionLabel={({ mountain }) => (
+                        <div className="py-0.5">
+                          <p className="text-sm font-semibold text-slate-900">{mountain.name}</p>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            {mountain.province}, {mountain.region}
+                          </p>
                         </div>
-                      </li>
-                    )}
-                  </ul>
-                ) : null}
+                      )}
+                      classNames={{
+                        control: (state) =>
+                          `touch-manipulation min-h-[60px] rounded-[20px] border bg-white px-3 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_10px_22px_rgba(148,163,184,0.16)] transition ${
+                            state.isFocused ? "border-sky-300 ring-2 ring-sky-200" : "border-sky-100"
+                          }`,
+                        valueContainer: () => "gap-2 py-2",
+                        singleValue: () => "text-sm font-semibold text-slate-900",
+                        placeholder: () => "text-sm text-slate-400",
+                        input: () => "text-sm text-slate-900",
+                        indicatorsContainer: () => "gap-1",
+                        indicatorSeparator: () => "hidden",
+                        dropdownIndicator: () => "text-slate-400 hover:text-slate-600",
+                        menu: () =>
+                          "z-30 mt-2 max-h-72 overflow-hidden rounded-[20px] border border-white/80 bg-white/95 p-2 shadow-[0_16px_30px_rgba(148,163,184,0.2)] backdrop-blur",
+                        menuList: () => "max-h-64 space-y-1 overflow-y-auto overscroll-contain",
+                        option: (state) =>
+                          `cursor-pointer rounded-2xl px-3 py-2.5 transition ${
+                            state.isSelected
+                              ? "bg-sky-100 text-slate-900"
+                              : state.isFocused
+                                ? "bg-slate-100 text-slate-900"
+                                : "bg-white text-slate-900"
+                          }`,
+                        noOptionsMessage: () => "px-2 py-3 text-sm text-slate-500",
+                      }}
+                      styles={{
+                        menuPortal: (base) => ({
+                          ...base,
+                          zIndex: 60,
+                        }),
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -1312,6 +1139,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                 </span>
               </div>
               <p className="mt-2 text-xs leading-5 text-slate-500">{confidenceHint}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-400">After 15 days, the app switches from day-level forecast to planning outlook. Beyond 30 days, it leans on the same calendar date and month history from the last 2 years.</p>
             </section>
 
             {selectedMountain ? (
@@ -1321,6 +1149,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                     src={selectedMountain.image_url}
                     alt={selectedMountain.name}
                     fill
+                    priority
                     sizes="(max-width: 1280px) 100vw, 380px"
                     className="object-cover"
                   />

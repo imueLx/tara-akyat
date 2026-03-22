@@ -1,4 +1,5 @@
 import type { DailyWeatherMetrics } from "@/types/hiking";
+import { fetchWeatherJson } from "@/lib/weather/http";
 
 interface VisualCrossingDay {
   datetime: string;
@@ -55,13 +56,7 @@ export async function fetchVisualCrossingDay(
   const url =
     `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/` +
     `${lat},${lon}/${date}/${date}?${params.toString()}`;
-  const response = await fetch(url, { next: { revalidate: 1800 } });
-
-  if (!response.ok) {
-    throw new Error(`Visual Crossing forecast failed (${response.status})`);
-  }
-
-  const payload = (await response.json()) as VisualCrossingTimelineResponse;
+  const payload = await fetchWeatherJson<VisualCrossingTimelineResponse>(url, "Visual Crossing forecast", 1800);
   const day = payload.days[0];
 
   if (!day) {

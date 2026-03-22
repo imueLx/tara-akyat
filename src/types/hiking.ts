@@ -67,6 +67,9 @@ export interface HistoryCrosscheck {
   wetDayChance: number;
   targetMonthAvgPrecipitation: number;
   targetMonthWetDayChance: number;
+  targetDateAvgPrecipitation: number;
+  targetDateWetDayChance: number;
+  targetDateSamples: number;
   note: string;
 }
 
@@ -75,6 +78,7 @@ export interface ProviderConsensus {
   secondaryProvider: string;
   secondaryAvailable: boolean;
   secondaryRecommendation: RecommendationLevel | null;
+  secondaryMetrics: DailyWeatherMetrics | null;
   agreement: "aligned" | "mixed" | "unavailable";
   note: string;
 }
@@ -102,7 +106,12 @@ export interface WeatherCheckResult {
   reasons: string[];
   metrics: DailyWeatherMetrics | null;
   climate: ClimateGuidance | null;
+  reliability: ForecastReliability;
+}
+
+export interface WeatherCheckDetails {
+  date: string;
+  mode: "forecast" | "climate";
   history: HistoryCrosscheck;
   consensus: ProviderConsensus;
-  reliability: ForecastReliability;
 }

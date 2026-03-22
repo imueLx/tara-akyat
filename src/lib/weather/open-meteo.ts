@@ -1,4 +1,5 @@
 import { addDays, formatISODate, monthBounds } from "@/lib/date";
+import { fetchWeatherJson } from "@/lib/weather/http";
 import type { ClimateGuidance, DailyWeatherMetrics, HistoryCrosscheck } from "@/types/hiking";
 
 interface OpenMeteoDailyResponse {
@@ -41,13 +42,7 @@ export async function fetchForecastRange(
   endDate: string,
 ): Promise<Map<string, DailyWeatherMetrics>> {
   const url = createForecastUrl(lat, lon, startDate, endDate);
-  const response = await fetch(url, { next: { revalidate: 1800 } });
-
-  if (!response.ok) {
-    throw new Error(`Open-Meteo forecast failed (${response.status})`);
-  }
-
-  const payload = (await response.json()) as OpenMeteoDailyResponse;
+  const payload = await fetchWeatherJson<OpenMeteoDailyResponse>(url, "Open-Meteo forecast", 1800);
   const map = new Map<string, DailyWeatherMetrics>();
 
   for (let i = 0; i < payload.daily.time.length; i += 1) {
@@ -97,13 +92,7 @@ export async function fetchClimateGuidance(lat: number, lon: number, targetDate:
   });
 
   const url = `https://archive-api.open-meteo.com/v1/archive?${params.toString()}`;
-  const response = await fetch(url, { next: { revalidate: 86400 } });
-
-  if (!response.ok) {
-    throw new Error(`Open-Meteo archive failed (${response.status})`);
-  }
-
-  const payload = (await response.json()) as OpenMeteoArchiveResponse;
+  const payload = await fetchWeatherJson<OpenMeteoArchiveResponse>(url, "Open-Meteo archive", 86400);
 
   let monthTotal = 0;
   let monthDays = 0;
@@ -150,6 +139,7 @@ export async function fetchTwoYearHistoryCrosscheck(
   const endDate = addDays(now, -1);
   const startDate = addDays(endDate, -(365 * 2 - 1));
   const targetMonth = new Date(`${targetDate}T00:00:00`).getMonth();
+  const targetDay = new Date(`${targetDate}T00:00:00`).getDate();
   const params = new URLSearchParams({
     latitude: String(lat),
     longitude: String(lon),
@@ -159,13 +149,7 @@ export async function fetchTwoYearHistoryCrosscheck(
     daily: "precipitation_sum",
   });
   const url = `https://archive-api.open-meteo.com/v1/archive?${params.toString()}`;
-  const response = await fetch(url, { next: { revalidate: 86400 } });
-
-  if (!response.ok) {
-    throw new Error(`Open-Meteo archive failed (${response.status})`);
-  }
-
-  const payload = (await response.json()) as OpenMeteoArchiveResponse;
+  const payload = await fetchWeatherJson<OpenMeteoArchiveResponse>(url, "Open-Meteo archive", 86400);
 
   let totalPrecipitation = 0;
   let totalDays = 0;
@@ -173,6 +157,9 @@ export async function fetchTwoYearHistoryCrosscheck(
   let monthPrecipitation = 0;
   let monthDays = 0;
   let monthWetDays = 0;
+  let targetDatePrecipitation = 0;
+  let targetDateSamples = 0;
+  let targetDateWetDays = 0;
 
   for (let i = 0; i < payload.daily.time.length; i += 1) {
     const date = new Date(`${payload.daily.time[i]}T00:00:00`);
@@ -191,15 +178,27 @@ export async function fetchTwoYearHistoryCrosscheck(
         monthWetDays += 1;
       }
     }
+
+    if (date.getMonth() === targetMonth && date.getDate() === targetDay) {
+      targetDatePrecipitation += rain;
+      targetDateSamples += 1;
+      if (rain >= 1) {
+        targetDateWetDays += 1;
+      }
+    }
   }
 
   const avgDailyPrecipitation = totalDays > 0 ? Number((totalPrecipitation / totalDays).toFixed(1)) : 0;
   const wetDayChance = totalDays > 0 ? Number(((totalWetDays / totalDays) * 100).toFixed(0)) : 0;
   const targetMonthAvgPrecipitation = monthDays > 0 ? Number((monthPrecipitation / monthDays).toFixed(1)) : 0;
   const targetMonthWetDayChance = monthDays > 0 ? Number(((monthWetDays / monthDays) * 100).toFixed(0)) : 0;
+  const targetDateAvgPrecipitation = targetDateSamples > 0 ? Number((targetDatePrecipitation / targetDateSamples).toFixed(1)) : 0;
+  const targetDateWetDayChance = targetDateSamples > 0 ? Number(((targetDateWetDays / targetDateSamples) * 100).toFixed(0)) : 0;
 
   let note = "Last 2 years suggest generally manageable rainfall patterns.";
-  if (targetMonthWetDayChance >= 55 || targetMonthAvgPrecipitation >= 8) {
+  if (targetDateSamples > 0 && (targetDateWetDayChance >= 50 || targetDateAvgPrecipitation >= 6)) {
+    note = "The same calendar date in the last 2 years was often wet. Treat this as planning guidance only and recheck close to hike day.";
+  } else if (targetMonthWetDayChance >= 55 || targetMonthAvgPrecipitation >= 8) {
     note = "Last 2 years show this month is often wet. Prepare rain gear and keep a backup date.";
   } else if (targetMonthWetDayChance >= 35 || targetMonthAvgPrecipitation >= 4) {
     note = "Last 2 years show mixed conditions for this month. Recheck weather near hike day.";
@@ -212,6 +211,9 @@ export async function fetchTwoYearHistoryCrosscheck(
     wetDayChance,
     targetMonthAvgPrecipitation,
     targetMonthWetDayChance,
+    targetDateAvgPrecipitation,
+    targetDateWetDayChance,
+    targetDateSamples,
     note,
   };
 }

@@ -92,11 +92,15 @@ export function getSelectedReliability(daysAhead: number): ReliabilityTier {
   };
 }
 
-export function buildReliabilityMessage(daysAhead: number, history: HistoryCrosscheck): string {
+export function buildReliabilityMessage(daysAhead: number, history?: HistoryCrosscheck | null): string {
   const selected = getSelectedReliability(daysAhead);
 
-  if (!selected.reliesOnHistory) {
+  if (!selected.reliesOnHistory || !history) {
     return `${selected.label} forecast confidence is about ${selected.estimatedAccuracy}%. ${selected.notes}`;
+  }
+
+  if (daysAhead > 30) {
+    return `${selected.label} forecast confidence is about ${selected.estimatedAccuracy}%. ${selected.notes} Same calendar date wet chance over the last 2 years is ${history.targetDateWetDayChance}%, and target-month wet chance is ${history.targetMonthWetDayChance}%.`;
   }
 
   return `${selected.label} forecast confidence is about ${selected.estimatedAccuracy}%. ${selected.notes} Last 2-year target-month wet chance is ${history.targetMonthWetDayChance}%.`;
