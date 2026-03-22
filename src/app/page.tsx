@@ -1,64 +1,74 @@
-import Image from "next/image";
+import { HomePlannerClient } from "@/components/mountains/home-planner-client";
+import { getMountains } from "@/lib/mountains";
 
-export default function Home() {
+type Props = {
+  searchParams?: Promise<{ date?: string }>;
+};
+
+export default async function Home({ searchParams }: Props) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const initialDate = resolvedSearchParams?.date;
+  const mountains = getMountains().map((mountain) => ({
+    id: mountain.id,
+    name: mountain.name,
+    slug: mountain.slug,
+    region: mountain.region,
+    province: mountain.province,
+    lat: mountain.lat,
+    lon: mountain.lon,
+    image_url: mountain.image_url,
+    image_verified: mountain.image_verified,
+    difficulty_source_url: mountain.difficulty_source_url,
+    difficulty_score: mountain.difficulty_score,
+    summary: mountain.summary,
+  }));
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <div className="min-h-screen pb-10">
+      <main className="mx-auto max-w-6xl px-3 pt-3 sm:px-5 sm:pt-5 md:px-6 md:pt-6">
+        <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#ffffff_0%,#f5fbff_52%,#eefaf2_100%)] shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
+          <div className="p-4 sm:p-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-sky-700">Tara Akyat</p>
+                <h1 className="mt-3 max-w-xl text-[2rem] font-semibold leading-tight text-slate-950 sm:text-4xl">
+                  Check if the day is good for hiking.
+                </h1>
+                <p className="mt-2 max-w-lg text-sm leading-6 text-slate-600 sm:text-base">
+                  A weather-first hiking checker for Philippine mountains, built to feel clear and quick on your phone.
+                </p>
+              </div>
+
+              <div className="flex w-full sm:w-auto">
+                <a
+                  href="#planner"
+                  className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 sm:w-auto"
+                >
+                  Start planning
+                </a>
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Mountain spots</p>
+                <p className="mt-1 text-lg font-semibold text-slate-950">{mountains.length}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Best forecast use</p>
+                <p className="mt-1 text-lg font-semibold text-slate-950">3 to 7 days</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Long-range mode</p>
+                <p className="mt-1 text-lg font-semibold text-slate-950">2-year history guide</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="planner" className="scroll-mt-28 pt-4 sm:scroll-mt-32 sm:pt-6">
+          <HomePlannerClient mountains={mountains} initialDate={initialDate} />
+        </section>
       </main>
     </div>
   );

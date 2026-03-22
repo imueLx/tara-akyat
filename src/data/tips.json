@@ -1,0 +1,684 @@
+[
+  {
+    "id": "tip-1",
+    "mountain_id": "mt-ulap",
+    "source_type": "travel_agency",
+    "title": "Mt. Ulap Itinerary Guide",
+    "url": "https://guidetothephilippines.ph/articles/ultimate-guides/mount-ulap-travel-guide",
+    "note": "Typical day hike starts early; bring sun protection for exposed ridges.",
+    "safety_tags": [
+      "sun-protection",
+      "day-hike"
+    ]
+  },
+  {
+    "id": "tip-2",
+    "mountain_id": "mt-ulap",
+    "source_type": "reddit",
+    "title": "Ulap trail prep discussion",
+    "url": "https://www.reddit.com/r/phtravel/search/?q=mt%20ulap&restrict_sr=1",
+    "note": "Check recent trail conditions and transport tips from commuters.",
+    "safety_tags": [
+      "transport",
+      "trail-condition"
+    ]
+  },
+  {
+    "id": "tip-3",
+    "mountain_id": "mt-pulag",
+    "source_type": "official",
+    "title": "Pulag National Park reminders",
+    "url": "https://bmb.gov.ph",
+    "note": "Permit and guide requirements can change; verify with park authorities before booking.",
+    "safety_tags": [
+      "permit",
+      "registration"
+    ]
+  },
+  {
+    "id": "tip-4",
+    "mountain_id": "mt-pulag",
+    "source_type": "travel_agency",
+    "title": "Pulag joiner packages overview",
+    "url": "https://www.klook.com/en-PH/",
+    "note": "Compare inclusions like DENR registration, van transfer, and guide fees.",
+    "safety_tags": [
+      "budget",
+      "logistics"
+    ]
+  },
+  {
+    "id": "tip-5",
+    "mountain_id": "mt-kulis",
+    "source_type": "reddit",
+    "title": "Kulis beginner hike threads",
+    "url": "https://www.reddit.com/r/phtravel/search/?q=mt%20kulis&restrict_sr=1",
+    "note": "Community posts often include commute timings and crowd estimates.",
+    "safety_tags": [
+      "crowd",
+      "commute"
+    ]
+  },
+  {
+    "id": "tip-6",
+    "mountain_id": "mt-daraitan",
+    "source_type": "travel_agency",
+    "title": "Daraitan + Tinipak day trip",
+    "url": "https://guidetothephilippines.ph",
+    "note": "River crossings can be risky after rain; bring dry bags and proper footwear.",
+    "safety_tags": [
+      "river-crossing",
+      "footwear"
+    ]
+  },
+  {
+    "id": "tip-7",
+    "mountain_id": "mt-batulao",
+    "source_type": "travel_agency",
+    "title": "Batulao trail options",
+    "url": "https://www.pinoymountaineer.com",
+    "note": "Old and new trails differ in steepness and exposure.",
+    "safety_tags": [
+      "navigation",
+      "heat"
+    ]
+  },
+  {
+    "id": "tip-8",
+    "mountain_id": "mt-makulot",
+    "source_type": "reddit",
+    "title": "Makulot Rockies safety tips",
+    "url": "https://www.reddit.com/r/Philippines/search/?q=mt%20makulot",
+    "note": "Check wind conditions before spending long at cliff viewpoints.",
+    "safety_tags": [
+      "wind",
+      "exposed-areas"
+    ]
+  },
+  {
+    "id": "tip-9",
+    "mountain_id": "mt-batolusong",
+    "source_type": "travel_agency",
+    "title": "Batolusong sunrise guide",
+    "url": "https://www.klook.com/en-PH/",
+    "note": "Early entry can help avoid midday heat on open ridges.",
+    "safety_tags": [
+      "sunrise",
+      "heat"
+    ]
+  },
+  {
+    "id": "tip-10",
+    "mountain_id": "mt-marami",
+    "source_type": "reddit",
+    "title": "Marami trail condition posts",
+    "url": "https://www.reddit.com/r/phtravel/search/?q=mt%20marami&restrict_sr=1",
+    "note": "Mud sections become slippery in wet weeks.",
+    "safety_tags": [
+      "mud",
+      "trekking-poles"
+    ]
+  },
+  {
+    "id": "tip-11",
+    "mountain_id": "mt-gulugod-baboy",
+    "source_type": "travel_agency",
+    "title": "Anilao + Gulugod Baboy itinerary",
+    "url": "https://guidetothephilippines.ph",
+    "note": "No shade on parts of the trail; carry extra water.",
+    "safety_tags": [
+      "hydration",
+      "sun-protection"
+    ]
+  },
+  {
+    "id": "tip-12",
+    "mountain_id": "mt-talamitam",
+    "source_type": "reddit",
+    "title": "Talamitam beginner prep",
+    "url": "https://www.reddit.com/r/phtravel/search/?q=mt%20talamitam&restrict_sr=1",
+    "note": "Bring a buff and hat since grassy sections are exposed.",
+    "safety_tags": [
+      "sun-protection"
+    ]
+  },
+  {
+    "id": "tip-13",
+    "mountain_id": "mt-manabu",
+    "source_type": "travel_agency",
+    "title": "Manabu day hike reminders",
+    "url": "https://www.pinoymountaineer.com",
+    "note": "Best to start before sunrise to avoid heat at lower elevations.",
+    "safety_tags": [
+      "start-time",
+      "hydration"
+    ]
+  },
+  {
+    "id": "tip-14",
+    "mountain_id": "mt-apo",
+    "source_type": "official",
+    "title": "Mt. Apo permit and local coordination",
+    "url": "https://www.tourism.gov.ph",
+    "note": "Coordinate with accredited local guides and check current access rules.",
+    "safety_tags": [
+      "permit",
+      "guide-required"
+    ]
+  },
+  {
+    "id": "tip-15",
+    "mountain_id": "mt-apo",
+    "source_type": "reddit",
+    "title": "Apo multi-day packing lists",
+    "url": "https://www.reddit.com/r/hiking/search/?q=mount%20apo",
+    "note": "Use layered clothing; summit temperatures can drop sharply.",
+    "safety_tags": [
+      "layering",
+      "multi-day"
+    ]
+  },
+  {
+    "id": "tip-16",
+    "mountain_id": "mt-kitanglad",
+    "source_type": "official",
+    "title": "Bukidnon protected area reminders",
+    "url": "https://bmb.gov.ph",
+    "note": "Respect indigenous community protocols and local regulations.",
+    "safety_tags": [
+      "permit",
+      "local-protocol"
+    ]
+  },
+  {
+    "id": "tip-17",
+    "mountain_id": "mt-dulang-dulang",
+    "source_type": "travel_agency",
+    "title": "D2 + Kitanglad traverse planning",
+    "url": "https://www.pinoymountaineer.com",
+    "note": "Expect long trekking days and wet sections even in dry season.",
+    "safety_tags": [
+      "endurance",
+      "rain-gear"
+    ]
+  },
+  {
+    "id": "tip-18",
+    "mountain_id": "mt-kalatungan",
+    "source_type": "reddit",
+    "title": "Kalatungan condition checks",
+    "url": "https://www.reddit.com/r/hiking/search/?q=kalatungan",
+    "note": "Bring reliable navigation support and local guide support.",
+    "safety_tags": [
+      "navigation",
+      "guide-required"
+    ]
+  },
+  {
+    "id": "tip-19",
+    "mountain_id": "mt-hibok-hibok",
+    "source_type": "travel_agency",
+    "title": "Camiguin Hibok-Hibok trek add-ons",
+    "url": "https://guidetothephilippines.ph",
+    "note": "Monitor rain because volcanic soil trails can get very slick.",
+    "safety_tags": [
+      "slippery-trail",
+      "weather-check"
+    ]
+  },
+  {
+    "id": "tip-20",
+    "mountain_id": "mt-amuyao",
+    "source_type": "travel_agency",
+    "title": "Amuyao Batad route notes",
+    "url": "https://www.pinoymountaineer.com",
+    "note": "Plan logistics early due to long travel and limited transport schedules.",
+    "safety_tags": [
+      "logistics",
+      "multi-day"
+    ]
+  },
+  {
+    "id": "tip-21",
+    "mountain_id": "mt-tapulao",
+    "source_type": "reddit",
+    "title": "Tapulao road trek prep",
+    "url": "https://www.reddit.com/r/phtravel/search/?q=tapulao&restrict_sr=1",
+    "note": "Temperature swings are common; bring both sun and cold protection.",
+    "safety_tags": [
+      "layering",
+      "sun-protection"
+    ]
+  },
+  {
+    "id": "tip-22",
+    "mountain_id": "mt-pinagbanderahan",
+    "source_type": "travel_agency",
+    "title": "Pinagbanderahan + Banahaw side tips",
+    "url": "https://guidetothephilippines.ph",
+    "note": "Observe local restrictions near protected religious areas.",
+    "safety_tags": [
+      "local-rules",
+      "respect"
+    ]
+  },
+  {
+    "id": "tip-23",
+    "mountain_id": "mt-arayat",
+    "source_type": "reddit",
+    "title": "Arayat traverse experiences",
+    "url": "https://www.reddit.com/r/phtravel/search/?q=mt%20arayat&restrict_sr=1",
+    "note": "Expect steep climbs with limited water sources along parts of the route.",
+    "safety_tags": [
+      "hydration",
+      "steep-climb"
+    ]
+  },
+  {
+    "id": "tip-24",
+    "mountain_id": "mt-irid",
+    "source_type": "travel_agency",
+    "title": "Irid river crossing strategy",
+    "url": "https://www.pinoymountaineer.com",
+    "note": "Avoid schedules after heavy rain due to river and trail risk.",
+    "safety_tags": [
+      "river-crossing",
+      "weather-check"
+    ]
+  },
+  {
+    "id": "tip-25",
+    "mountain_id": "mt-ulo",
+    "source_type": "travel_agency",
+    "title": "Ugo overnight essentials",
+    "url": "https://www.pinoymountaineer.com",
+    "note": "Bring cold-weather sleep system and enough water treatment options.",
+    "safety_tags": [
+      "overnight",
+      "water-treatment"
+    ]
+  },
+  {
+    "id": "tip-26",
+    "mountain_id": "mt-kanlaon",
+    "source_type": "official",
+    "title": "Kanlaon advisory sources",
+    "url": "https://phivolcs.dost.gov.ph",
+    "note": "Always verify volcano alert level and trail access before departure.",
+    "safety_tags": [
+      "volcano-alert",
+      "permit"
+    ]
+  },
+  {
+    "id": "tip-27",
+    "mountain_id": "mt-madjaas",
+    "source_type": "reddit",
+    "title": "Madja-as route insights",
+    "url": "https://www.reddit.com/r/hiking/search/?q=madja-as",
+    "note": "Wet trail reports are common, so waterproof packing is essential.",
+    "safety_tags": [
+      "rain-gear",
+      "waterproofing"
+    ]
+  },
+  {
+    "id": "tip-28",
+    "mountain_id": "mt-talangnan",
+    "source_type": "travel_agency",
+    "title": "Talinis crater lake route",
+    "url": "https://guidetothephilippines.ph",
+    "note": "Schedule extra daylight if including multiple lakes.",
+    "safety_tags": [
+      "time-management",
+      "navigation"
+    ]
+  },
+  {
+    "id": "tip-29",
+    "mountain_id": "osmena-peak",
+    "source_type": "travel_agency",
+    "title": "Osmena Peak quick guide",
+    "url": "https://www.klook.com/en-PH/",
+    "note": "Strong winds are common; bring a light shell even for short hikes.",
+    "safety_tags": [
+      "wind",
+      "quick-hike"
+    ]
+  },
+  {
+    "id": "tip-30",
+    "mountain_id": "mt-napulak",
+    "source_type": "reddit",
+    "title": "Napulak trail and weather notes",
+    "url": "https://www.reddit.com/r/hiking/search/?q=napulak",
+    "note": "Trail can be very muddy after rain; gaiters help.",
+    "safety_tags": [
+      "mud",
+      "gear"
+    ]
+  },
+  {
+    "id": "tip-31",
+    "mountain_id": "mt-mariveles",
+    "source_type": "travel_agency",
+    "title": "Mariveles day plan",
+    "url": "https://www.pinoymountaineer.com",
+    "note": "Start before dawn and prepare for long exposed trail segments.",
+    "safety_tags": [
+      "start-time",
+      "heat"
+    ]
+  },
+  {
+    "id": "tip-32",
+    "mountain_id": "mt-buntis",
+    "source_type": "reddit",
+    "title": "Mt. Buntis beginner checklists",
+    "url": "https://www.reddit.com/r/phtravel/search/?q=mt%20buntis&restrict_sr=1",
+    "note": "Good starter mountain, but still bring rain protection in wet months.",
+    "safety_tags": [
+      "rain-gear",
+      "beginner"
+    ]
+  },
+  {
+    "id": "tip-33",
+    "mountain_id": "mt-sembrano",
+    "source_type": "travel_agency",
+    "title": "Sembrano lake view hike",
+    "url": "https://guidetothephilippines.ph",
+    "note": "Heat exposure is high at noon; prioritize early departures.",
+    "safety_tags": [
+      "sun-protection",
+      "hydration"
+    ]
+  },
+  {
+    "id": "tip-34",
+    "mountain_id": "mt-sembrano",
+    "source_type": "reddit",
+    "title": "Sembrano commute tips",
+    "url": "https://www.reddit.com/r/phtravel/search/?q=mt%20sembrano&restrict_sr=1",
+    "note": "User threads can help with jump-off transport timing.",
+    "safety_tags": [
+      "commute",
+      "logistics"
+    ]
+  },
+  {
+    "id": "tip-35",
+    "mountain_id": "mt-guiting-guiting",
+    "source_type": "travel_agency",
+    "title": "G2 technical climb prep",
+    "url": "https://www.pinoymountaineer.com",
+    "note": "This route requires excellent scrambling skills, strong weather timing, and experienced local guides.",
+    "safety_tags": [
+      "technical-climb",
+      "guide-required",
+      "weather-check"
+    ]
+  },
+  {
+    "id": "tip-36",
+    "mountain_id": "mt-guiting-guiting",
+    "source_type": "reddit",
+    "title": "Mt. Guiting-Guiting safety threads",
+    "url": "https://www.reddit.com/r/hiking/search/?q=guiting%20guiting",
+    "note": "Recent trip reports help identify current rope sections and risk points.",
+    "safety_tags": [
+      "route-risk",
+      "trip-report"
+    ]
+  },
+  {
+    "id": "tip-37",
+    "mountain_id": "mt-pulag",
+    "source_type": "facebook",
+    "title": "RA Travel & Tour's Ambangeg joiner post",
+    "url": "https://www.facebook.com/ratravels09/posts/pfbid02fqKaNDhR5KaAYJRy76sNAcYLZA4YHQEjNyVpR48hhYPoQFZ9Gt27KQYPxfgGn68nl",
+    "note": "User-shared March schedule shows Mt. Pulag via Ambangeg as an active joiner route with limited remaining slots.",
+    "safety_tags": [
+      "joiner-tour",
+      "ambangeg",
+      "weekend-hike"
+    ]
+  },
+  {
+    "id": "tip-38",
+    "mountain_id": "mt-arayat",
+    "source_type": "facebook",
+    "title": "RA Travel & Tour's Arayat Quad Peak schedule",
+    "url": "https://www.facebook.com/ratravels09/posts/pfbid02fqKaNDhR5KaAYJRy76sNAcYLZA4YHQEjNyVpR48hhYPoQFZ9Gt27KQYPxfgGn68nl",
+    "note": "User-shared schedule lists Mt. Arayat Quad Peak on multiple March dates, which helps confirm it as a frequently offered guided climb.",
+    "safety_tags": [
+      "joiner-tour",
+      "quad-peak",
+      "guide-support"
+    ]
+  },
+  {
+    "id": "tip-39",
+    "mountain_id": "mt-batulao",
+    "source_type": "facebook",
+    "title": "RA Travel & Tour's Batulao New Trail schedule",
+    "url": "https://www.facebook.com/ratravels09/posts/pfbid02fqKaNDhR5KaAYJRy76sNAcYLZA4YHQEjNyVpR48hhYPoQFZ9Gt27KQYPxfgGn68nl",
+    "note": "User-shared schedule specifically calls out the Batulao New Trail, which is useful for checking the exact route option before booking.",
+    "safety_tags": [
+      "joiner-tour",
+      "new-trail",
+      "route-choice"
+    ]
+  },
+  {
+    "id": "tip-40",
+    "mountain_id": "mt-kabunian",
+    "source_type": "facebook",
+    "title": "RA Travel & Tour's Kabunian schedule",
+    "url": "https://www.facebook.com/ratravels09/posts/pfbid02fqKaNDhR5KaAYJRy76sNAcYLZA4YHQEjNyVpR48hhYPoQFZ9Gt27KQYPxfgGn68nl",
+    "note": "User-shared schedule includes Mt. Kabunian as a bookable March climb with limited slots left.",
+    "safety_tags": [
+      "joiner-tour",
+      "cordillera",
+      "limited-slots"
+    ]
+  },
+  {
+    "id": "tip-41",
+    "mountain_id": "mt-kabunian",
+    "source_type": "reddit",
+    "title": "Kabunian footwear and trail prep thread",
+    "url": "https://www.reddit.com/r/PHikingAndBackpacking/comments/1gvoisb/mt_kabunian/",
+    "note": "Recent hikers discuss shoe choice, steep sections, and how Kabunian feels compared with Ulap and Daraitan.",
+    "safety_tags": [
+      "footwear",
+      "steep-climb",
+      "comparison"
+    ]
+  },
+  {
+    "id": "tip-42",
+    "mountain_id": "mt-tabayoc",
+    "source_type": "facebook",
+    "title": "RA Travel & Tour's Tabayoc + Timbak + 4 Lakes post",
+    "url": "https://www.facebook.com/ratravels09/posts/pfbid02fqKaNDhR5KaAYJRy76sNAcYLZA4YHQEjNyVpR48hhYPoQFZ9Gt27KQYPxfgGn68nl",
+    "note": "User-shared schedule lists Mt. Tabayoc with Mt. Timbak, Four Lakes, and Jr. Pulag in one Cordillera itinerary.",
+    "safety_tags": [
+      "joiner-tour",
+      "4-lakes",
+      "multi-stop"
+    ]
+  },
+  {
+    "id": "tip-43",
+    "mountain_id": "mt-timbak",
+    "source_type": "facebook",
+    "title": "RA Travel & Tour's Timbak and Four Lakes itinerary",
+    "url": "https://www.facebook.com/ratravels09/posts/pfbid02fqKaNDhR5KaAYJRy76sNAcYLZA4YHQEjNyVpR48hhYPoQFZ9Gt27KQYPxfgGn68nl",
+    "note": "User-shared schedule shows Mt. Timbak as part of a lighter Cordillera package with Four Lakes and Jr. Pulag.",
+    "safety_tags": [
+      "joiner-tour",
+      "4-lakes",
+      "easy-summit"
+    ]
+  },
+  {
+    "id": "tip-44",
+    "mountain_id": "mt-tenglawan",
+    "source_type": "facebook",
+    "title": "RA Travel & Tour's Tenglawan schedule",
+    "url": "https://www.facebook.com/ratravels09/posts/pfbid02fqKaNDhR5KaAYJRy76sNAcYLZA4YHQEjNyVpR48hhYPoQFZ9Gt27KQYPxfgGn68nl",
+    "note": "User-shared schedule includes Mt. Tenglawan as a standalone March climb with a few remaining slots.",
+    "safety_tags": [
+      "joiner-tour",
+      "carrot-peak",
+      "limited-slots"
+    ]
+  },
+  {
+    "id": "tip-45",
+    "mountain_id": "mt-sicapoo",
+    "source_type": "facebook",
+    "title": "RA Travel & Tour's Sicapoo dayhike post",
+    "url": "https://www.facebook.com/ratravels09/posts/pfbid02fqKaNDhR5KaAYJRy76sNAcYLZA4YHQEjNyVpR48hhYPoQFZ9Gt27KQYPxfgGn68nl",
+    "note": "User-shared schedule lists Mt. Sicapoo as a March dayhike option, which is useful for seeing active joiner demand.",
+    "safety_tags": [
+      "joiner-tour",
+      "major-climb",
+      "dayhike"
+    ]
+  },
+  {
+    "id": "tip-46",
+    "mountain_id": "mt-pinatubo",
+    "source_type": "facebook",
+    "title": "RA Travel & Tour's Pinatubo schedule",
+    "url": "https://www.facebook.com/ratravels09/posts/pfbid02fqKaNDhR5KaAYJRy76sNAcYLZA4YHQEjNyVpR48hhYPoQFZ9Gt27KQYPxfgGn68nl",
+    "note": "User-shared schedule lists Mt. Pinatubo with Bataan pickup, confirming it as one of the easier guided weekend options.",
+    "safety_tags": [
+      "joiner-tour",
+      "4x4",
+      "beginner-friendly"
+    ]
+  },
+  {
+    "id": "tip-mt-pico-de-loro-guide",
+    "mountain_id": "mt-pico-de-loro",
+    "source_type": "travel_agency",
+    "title": "Pico de Loro trail guide",
+    "url": "https://www.pinoymountaineer.com/2007/08/mt-palay-palaypico-de-loro-664_9808.html",
+    "note": "Classic route guide with trail background, coordinates, and old closure notes to double-check before planning.",
+    "safety_tags": [
+      "route-guide",
+      "closure-check"
+    ]
+  },
+  {
+    "id": "tip-mt-makiling-guide",
+    "mountain_id": "mt-makiling",
+    "source_type": "travel_agency",
+    "title": "Makiling UPLB trail guide",
+    "url": "https://www.pinoymountaineer.com/2007/09/mt-makiling-1090.html",
+    "note": "Useful for the standard Los Banos route, summit timing, and forest trail expectations.",
+    "safety_tags": [
+      "route-guide",
+      "forest-trail"
+    ]
+  },
+  {
+    "id": "tip-mt-cristobal-guide",
+    "mountain_id": "mt-cristobal",
+    "source_type": "travel_agency",
+    "title": "Cristobal hike guide and caution notes",
+    "url": "https://www.siranglente.com/2016/02/mt-cristobal-devils-mountain-quezon-travel-hiking-guide-itinerary.html",
+    "note": "Good reference for route feel, muddy trail expectations, and local caution around access and weather.",
+    "safety_tags": [
+      "mud",
+      "access-check"
+    ]
+  },
+  {
+    "id": "tip-mt-nagpatong-guide",
+    "mountain_id": "mt-nagpatong",
+    "source_type": "travel_agency",
+    "title": "Nagpatong historical trail notes",
+    "url": "https://www.pinoymountaineer.com/2008/05/historical-trails-mt-buntis-and.html",
+    "note": "Best used for heritage context and twin-hike planning with Mt. Buntis.",
+    "safety_tags": [
+      "historical-site",
+      "easy-hike"
+    ]
+  },
+  {
+    "id": "tip-mt-hapunang-banoi-note",
+    "mountain_id": "mt-hapunang-banoi",
+    "source_type": "reddit",
+    "title": "Hapunang Banoi beginner discussions",
+    "url": "https://www.reddit.com/r/PHikingAndBackpacking/comments/yj5jrc/planning_to_hike_first_timer/",
+    "note": "Community threads often compare Hapunang Banoi with other Rizal climbs and help set expectations for first-timers.",
+    "safety_tags": [
+      "beginner-check",
+      "comparison"
+    ]
+  },
+  {
+    "id": "tip-mt-pamitinan-guide",
+    "mountain_id": "mt-pamitinan",
+    "source_type": "travel_agency",
+    "title": "Pamitinan and Binacayan route guide",
+    "url": "https://www.pinoymountaineer.com/2015/02/mt-pamitinan-426-and-mt-binacayan-424.html",
+    "note": "Helpful for summit timing, cave context, and combining Pamitinan with Binacayan.",
+    "safety_tags": [
+      "limestone",
+      "half-day-hike"
+    ]
+  },
+  {
+    "id": "tip-mt-balingkilat-guide",
+    "mountain_id": "mt-balingkilat",
+    "source_type": "travel_agency",
+    "title": "Balingkilat climb guide",
+    "url": "https://www.pinoymountaineer.com/2008/07/mt-balingkilat-1100.html",
+    "note": "Use this for Cawag route expectations, exposed ridge timing, and coastal mountain planning.",
+    "safety_tags": [
+      "heat",
+      "ridge-walk"
+    ]
+  },
+  {
+    "id": "tip-mt-387-guide",
+    "mountain_id": "mt-387",
+    "source_type": "travel_agency",
+    "title": "Mt. 387 traverse guide",
+    "url": "https://tanawexplorer.com/mt-387/",
+    "note": "Useful for deciding between backtrail and traverse style, plus expectations for grassland exposure.",
+    "safety_tags": [
+      "traverse",
+      "grassland"
+    ]
+  },
+  {
+    "id": "tip-mt-romelo-guide",
+    "mountain_id": "mt-romelo",
+    "source_type": "travel_agency",
+    "title": "Romelo waterfall hike guide",
+    "url": "https://www.pinoymountaineer.com/2007/09/mt-romelo-240.html",
+    "note": "Best reference for waterfall side trips and muddy trail expectations in wet weeks.",
+    "safety_tags": [
+      "waterfalls",
+      "mud"
+    ]
+  },
+  {
+    "id": "tip-mt-maynoba-guide",
+    "mountain_id": "mt-maynoba",
+    "source_type": "travel_agency",
+    "title": "Maynoba sea-of-clouds guide",
+    "url": "https://www.raescape.com/2018/02/mt-maynoba.html",
+    "note": "Good for Cayabu-Maynoba loop context, sunrise timing, and sea-of-clouds expectations.",
+    "safety_tags": [
+      "sunrise",
+      "loop-trail"
+    ]
+  }
+]

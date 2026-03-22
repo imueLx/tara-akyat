@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="800" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e0f2fe"/>
+      <stop offset="1" stop-color="#dcfce7"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <path d="M80 650L340 330L460 500L610 250L860 650H80Z" fill="#0f766e" fill-opacity="0.3"/>
+  <path d="M280 650L520 360L760 650H280Z" fill="#0369a1" fill-opacity="0.35"/>
+  <text x="600" y="720" text-anchor="middle" fill="#0f172a" font-family="Arial, sans-serif" font-size="42" font-weight="700">Mountain Photo Pending Verification</text>
+</svg>
