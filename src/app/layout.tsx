@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Chivo, JetBrains_Mono } from "next/font/google";
 
 import { AppTopNav } from "@/components/app-top-nav";
-import { DEFAULT_OG_IMAGE_PATH, SITE_DESCRIPTION, SITE_NAME, getBaseUrl } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE_PATH, SITE_DESCRIPTION, SITE_LOCALE, SITE_NAME, getBaseUrl } from "@/lib/seo";
 
 import "./globals.css";
 
@@ -24,12 +24,10 @@ export const metadata: Metadata = {
   },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
+    locale: SITE_LOCALE,
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
     url: "/",
@@ -70,7 +68,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth" className={`${chivo.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en-PH" data-scroll-behavior="smooth" className={`${chivo.variable} ${jetbrainsMono.variable}`}>
       <body className="min-h-screen bg-slate-100 text-slate-900">
         <AppTopNav />
         {children}

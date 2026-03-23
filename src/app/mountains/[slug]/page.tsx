@@ -8,14 +8,27 @@ import { MountainPhotoLightbox } from "@/components/mountains/mountain-photo-lig
 import { TipsList } from "@/components/mountains/tips-list";
 import { getMountainImageObjectPosition } from "@/lib/mountain-image";
 import { getCommunityTipByMountainId, getMountainBySlug, getMountains, getTipsByMountainId } from "@/lib/mountains";
-import { DEFAULT_OG_IMAGE_PATH, SITE_NAME, absoluteUrl } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE_PATH, SITE_NAME, absoluteUrl, getMountainMetaDescription, serializeJsonLd } from "@/lib/seo";
 
 type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ date?: string }>;
 };
 
-const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+const monthOrder = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
 
 function sortMonths(months: string[]): string[] {
   return [...months].sort((a, b) => monthOrder.indexOf(a as (typeof monthOrder)[number]) - monthOrder.indexOf(b as (typeof monthOrder)[number]));
@@ -38,8 +51,8 @@ function formatMonthWindow(months: string[]): string {
 function getSeasonFeel(months: string[]): { eyebrow: string; title: string; body: string } {
   const ordered = sortMonths(months);
   const window = formatMonthWindow(ordered);
-  const startsLateYear = ordered.some((month) => month === "Nov" || month === "Dec");
-  const includesSummer = ordered.some((month) => month === "Mar" || month === "Apr" || month === "May");
+  const startsLateYear = ordered.some((month) => month === "November" || month === "December");
+  const includesSummer = ordered.some((month) => month === "March" || month === "April" || month === "May");
 
   if (ordered.length <= 2) {
     return {
@@ -92,17 +105,18 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
 
   const pageUrl = `/mountains/${mountain.slug}`;
   const imageUrl = mountain.image_url || DEFAULT_OG_IMAGE_PATH;
-  const description = `${mountain.name} in ${mountain.province}, ${mountain.region}. Elevation ${mountain.elevation_m.toLocaleString()} m. ${mountain.summary}`;
+  const description = getMountainMetaDescription(mountain);
+  const pageTitle = `${mountain.name} Hiking Guide and Weather Planner`;
 
   return {
-    title: `${mountain.name} Hiking Guide`,
+    title: pageTitle,
     description,
     alternates: {
       canonical: pageUrl,
     },
     openGraph: {
       type: "article",
-      title: `${mountain.name} - ${SITE_NAME}`,
+      title: `${pageTitle} | ${SITE_NAME}`,
       description,
       url: pageUrl,
       images: [
@@ -116,7 +130,7 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
     },
     twitter: {
       card: "summary_large_image",
-      title: `${mountain.name} - ${SITE_NAME}`,
+      title: `${pageTitle} | ${SITE_NAME}`,
       description,
       images: [imageUrl],
     },
@@ -136,56 +150,113 @@ export default async function MountainPage({ params, searchParams }: Props) {
   const communityTip = getCommunityTipByMountainId(mountain.id);
   const orderedBestMonths = sortMonths(mountain.best_months);
   const seasonFeel = getSeasonFeel(mountain.best_months);
+  const pageUrl = absoluteUrl(`/mountains/${mountain.slug}`);
+  const pageTitle = `${mountain.name} Hiking Guide and Weather Planner`;
+  const pageDescription = getMountainMetaDescription(mountain);
+  const imageUrl = absoluteUrl(mountain.image_url || DEFAULT_OG_IMAGE_PATH);
   const difficultyNote =
     mountain.difficulty_source_note ??
     "This score is a mountain-level estimate. Route condition, season, weather, and closures can make the actual hike easier or harder.";
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-20 pt-5 sm:px-6 sm:pt-7">
+      <nav aria-label="Breadcrumb" className="mb-3 text-sm text-slate-500">
+        <ol className="flex flex-wrap items-center gap-2">
+          <li>
+            <Link href="/" className="transition hover:text-slate-800">
+              Home
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li>
+            <Link href="/mountains" className="transition hover:text-slate-800">
+              Mountains
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li aria-current="page" className="text-slate-800">
+            {mountain.name}
+          </li>
+        </ol>
+      </nav>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: serializeJsonLd({
             "@context": "https://schema.org",
-            "@type": "TouristAttraction",
-            name: mountain.name,
-            description: mountain.summary,
-            image: absoluteUrl(mountain.image_url),
-            url: absoluteUrl(`/mountains/${mountain.slug}`),
-            geo: {
-              "@type": "GeoCoordinates",
-              latitude: mountain.lat,
-              longitude: mountain.lon,
-            },
-            address: {
-              "@type": "PostalAddress",
-              addressRegion: mountain.province,
-              addressCountry: "PH",
-            },
-            additionalProperty: [
+            "@graph": [
               {
-                "@type": "PropertyValue",
-                name: "Elevation (m)",
-                value: mountain.elevation_m,
+                "@type": "BreadcrumbList",
+                itemListElement: [
+                  {
+                    "@type": "ListItem",
+                    position: 1,
+                    name: "Home",
+                    item: absoluteUrl("/"),
+                  },
+                  {
+                    "@type": "ListItem",
+                    position: 2,
+                    name: "Mountains",
+                    item: absoluteUrl("/mountains"),
+                  },
+                  {
+                    "@type": "ListItem",
+                    position: 3,
+                    name: mountain.name,
+                    item: pageUrl,
+                  },
+                ],
               },
               {
-                "@type": "PropertyValue",
-                name: "Difficulty Score",
-                value: mountain.difficulty_score,
+                "@type": "WebPage",
+                "@id": `${pageUrl}#webpage`,
+                name: pageTitle,
+                description: pageDescription,
+                url: pageUrl,
+                primaryImageOfPage: imageUrl,
+                isPartOf: {
+                  "@id": absoluteUrl("/#website"),
+                },
+                about: {
+                  "@id": `${pageUrl}#place`,
+                },
+              },
+              {
+                "@type": "TouristAttraction",
+                "@id": `${pageUrl}#place`,
+                name: mountain.name,
+                description: mountain.summary,
+                image: imageUrl,
+                url: pageUrl,
+                touristType: "Hikers",
+                geo: {
+                  "@type": "GeoCoordinates",
+                  latitude: mountain.lat,
+                  longitude: mountain.lon,
+                },
+                address: {
+                  "@type": "PostalAddress",
+                  addressLocality: mountain.province,
+                  addressCountry: "PH",
+                },
+                additionalProperty: [
+                  {
+                    "@type": "PropertyValue",
+                    name: "Elevation (m)",
+                    value: mountain.elevation_m,
+                  },
+                  {
+                    "@type": "PropertyValue",
+                    name: "Difficulty Score",
+                    value: mountain.difficulty_score,
+                  },
+                ],
               },
             ],
           }),
         }}
       />
-      <div className="mb-3">
-        <Link
-          href="/mountains"
-          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
-        >
-          <span aria-hidden="true">←</span>
-          <span>Back to list</span>
-        </Link>
-      </div>
       <section className="overflow-hidden rounded-[32px] border border-slate-200/80 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.10)]">
         <div className="bg-[radial-gradient(circle_at_top_left,_rgba(14,116,144,0.10),_transparent_35%),linear-gradient(180deg,_rgba(248,250,252,0.96),_rgba(255,255,255,1))] p-5 sm:p-6">
           <MountainPhotoLightbox
