@@ -215,7 +215,7 @@ export default async function MountainPage({ params, searchParams }: Props) {
           </div>
           <div className="rounded-xl bg-slate-50 px-3 py-2">
             <dt>Best months</dt>
-            <dd className="font-semibold">{mountain.best_months.slice(0, 2).join(", ")}</dd>
+            <dd className="font-semibold">{mountain.best_months.join(", ")}</dd>
           </div>
         </dl>
       </section>

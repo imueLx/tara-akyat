@@ -8,6 +8,16 @@ export type MountainInsight = {
 };
 
 type MountainInsightSource = Pick<Mountain, "id" | "province" | "summary" | "difficulty_score">;
+type MountainMixSource = Pick<
+  Mountain,
+  "id" | "name" | "slug" | "region" | "province" | "difficulty_score" | "elevation_m" | "best_months"
+>;
+
+export type MountainMixCard = {
+  title: string;
+  description: string;
+  items: MountainMixSource[];
+};
 
 export type HomeHighlight = {
   title: string;
@@ -195,4 +205,45 @@ export function getMountainInsight(mountain: MountainInsightSource): MountainIns
 
 export function getHomeHighlights(): HomeHighlight[] {
   return homeHighlights;
+}
+
+export function getMountainMixCards(current: MountainMixSource, allMountains: MountainMixSource[]): MountainMixCard[] {
+  const candidates = allMountains.filter((mountain) => mountain.id !== current.id);
+
+  const nearbyMix = candidates
+    .filter((mountain) => mountain.province === current.province || mountain.region === current.region)
+    .sort((a, b) => Math.abs(a.difficulty_score - current.difficulty_score) - Math.abs(b.difficulty_score - current.difficulty_score))
+    .slice(0, 3);
+
+  const beginnerMix = candidates
+    .filter((mountain) => mountain.difficulty_score <= 3)
+    .sort((a, b) => {
+      const regionBoostA = a.region === current.region ? -1 : 0;
+      const regionBoostB = b.region === current.region ? -1 : 0;
+      return regionBoostA - regionBoostB || a.difficulty_score - b.difficulty_score;
+    })
+    .slice(0, 3);
+
+  const weatherBackupMix = candidates
+    .filter((mountain) => mountain.elevation_m <= current.elevation_m && mountain.difficulty_score <= Math.max(current.difficulty_score, 5))
+    .sort((a, b) => a.elevation_m - b.elevation_m || a.difficulty_score - b.difficulty_score)
+    .slice(0, 3);
+
+  return [
+    {
+      title: "Location mix",
+      description: "Similar area options you can weather-check for your next hike.",
+      items: nearbyMix,
+    },
+    {
+      title: "Beginner mix",
+      description: "Easier mountains for first-timers and beginner-friendly hiking days.",
+      items: beginnerMix,
+    },
+    {
+      title: "Weather backup mix",
+      description: "Lower and more manageable alternatives when rain or wind conditions look risky.",
+      items: weatherBackupMix,
+    },
+  ].filter((card) => card.items.length > 0);
 }
