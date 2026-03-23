@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,7 +7,9 @@ import { DateWeatherChecker } from "@/components/mountains/date-weather-checker"
 import { DifficultyPill } from "@/components/mountains/difficulty-pill";
 import { TipsList } from "@/components/mountains/tips-list";
 import { getMountainVerificationSummary } from "@/lib/content-quality";
+import { getMountainImageObjectPosition } from "@/lib/mountain-image";
 import { getCommunityTipByMountainId, getMountainBySlug, getMountains, getTipsByMountainId } from "@/lib/mountains";
+import { DEFAULT_OG_IMAGE_PATH, SITE_NAME, absoluteUrl } from "@/lib/seo";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -15,6 +18,53 @@ type Props = {
 
 export async function generateStaticParams() {
   return getMountains().map((mountain) => ({ slug: mountain.slug }));
+}
+
+export async function generateMetadata({ params }: Pick<Props, "params">): Promise<Metadata> {
+  const { slug } = await params;
+  const mountain = getMountainBySlug(slug);
+
+  if (!mountain) {
+    return {
+      title: "Mountain Not Found",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
+
+  const pageUrl = `/mountains/${mountain.slug}`;
+  const imageUrl = mountain.image_url || DEFAULT_OG_IMAGE_PATH;
+  const description = `${mountain.name} in ${mountain.province}, ${mountain.region}. Elevation ${mountain.elevation_m.toLocaleString()} m. ${mountain.summary}`;
+
+  return {
+    title: `${mountain.name} Hiking Guide`,
+    description,
+    alternates: {
+      canonical: pageUrl,
+    },
+    openGraph: {
+      type: "article",
+      title: `${mountain.name} - ${SITE_NAME}`,
+      description,
+      url: pageUrl,
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: mountain.name,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${mountain.name} - ${SITE_NAME}`,
+      description,
+      images: [imageUrl],
+    },
+  };
 }
 
 export default async function MountainPage({ params, searchParams }: Props) {
@@ -35,15 +85,62 @@ export default async function MountainPage({ params, searchParams }: Props) {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-4 pb-20 pt-5 sm:px-6 sm:pt-7">
-      <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-sky-700">
-        <Link href="/mountains" className="hover:text-sky-800">
-          Browse mountains
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "TouristAttraction",
+            name: mountain.name,
+            description: mountain.summary,
+            image: absoluteUrl(mountain.image_url),
+            url: absoluteUrl(`/mountains/${mountain.slug}`),
+            geo: {
+              "@type": "GeoCoordinates",
+              latitude: mountain.lat,
+              longitude: mountain.lon,
+            },
+            address: {
+              "@type": "PostalAddress",
+              addressRegion: mountain.province,
+              addressCountry: "PH",
+            },
+            additionalProperty: [
+              {
+                "@type": "PropertyValue",
+                name: "Elevation (m)",
+                value: mountain.elevation_m,
+              },
+              {
+                "@type": "PropertyValue",
+                name: "Difficulty Score",
+                value: mountain.difficulty_score,
+              },
+            ],
+          }),
+        }}
+      />
+      <div className="mb-3">
+        <Link
+          href="/mountains"
+          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+        >
+          <span aria-hidden="true">←</span>
+          <span>Back to list</span>
         </Link>
       </div>
-
-      <section className="mt-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="relative mb-4 h-52 w-full overflow-hidden rounded-2xl sm:h-64">
-          <Image src={mountain.image_url} alt={mountain.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 960px" />
+          <Image
+            src={mountain.image_url}
+            alt={mountain.name}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 960px"
+            preload
+            quality={75}
+            style={{ objectPosition: getMountainImageObjectPosition(mountain.slug) }}
+          />
         </div>
         {mountain.image_source_url ? (
           <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-600">

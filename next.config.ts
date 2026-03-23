@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
     ? { allowedDevOrigins: ["192.168.254.123"] }
     : {}),
   images: {
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 60 * 60 * 24 * 31,
+    qualities: [70, 75],
     remotePatterns: [
       {
         protocol: "https",

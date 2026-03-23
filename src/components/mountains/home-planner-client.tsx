@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { RecommendationPill } from "@/components/mountains/recommendation-pill";
 import { getMountainVerificationSummary } from "@/lib/content-quality";
 import { addDays, differenceInDays, formatISODate, isValidDate } from "@/lib/date";
+import { getMountainImageObjectPosition } from "@/lib/mountain-image";
 import { getSelectedReliability } from "@/lib/weather/reliability";
 import type { WeatherCheckDetails, WeatherCheckResult } from "@/types/hiking";
 
@@ -1149,9 +1150,12 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                     src={selectedMountain.image_url}
                     alt={selectedMountain.name}
                     fill
-                    priority
                     sizes="(max-width: 1280px) 100vw, 380px"
+                    loading="eager"
+                    fetchPriority="high"
+                    quality={70}
                     className="object-cover"
+                    style={{ objectPosition: getMountainImageObjectPosition(selectedMountain.slug) }}
                   />
                 </div>
                 <div className="p-4">

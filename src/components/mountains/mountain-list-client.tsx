@@ -6,6 +6,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { DifficultyPill } from "@/components/mountains/difficulty-pill";
 import { difficultyBand, difficultyRangeLabel, type DifficultyBand } from "@/lib/difficulty";
+import { getMountainImageObjectPosition } from "@/lib/mountain-image";
 import { getCommunityTipByMountainId, getTipsByMountainId } from "@/lib/mountains";
 import type { Mountain } from "@/types/hiking";
 
@@ -118,7 +119,10 @@ function getSortHeading(sortBy: SortOption): string {
   return "By difficulty";
 }
 
-function MountainCard({ mountain }: { mountain: Mountain }) {
+function MountainCard({ mountain, eagerLoad = false }: { mountain: Mountain; eagerLoad?: boolean }) {
+  const isPlaceholderImage = mountain.image_url === "/mountains/placeholder.svg";
+  const shouldEagerLoad = eagerLoad || isPlaceholderImage;
+
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/95 p-3.5 shadow-[0_12px_30px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_18px_34px_rgba(15,23,42,0.10)]">
       <div className="relative h-40 w-full overflow-hidden rounded-[22px] bg-slate-100 sm:h-44">
@@ -128,8 +132,21 @@ function MountainCard({ mountain }: { mountain: Mountain }) {
           fill
           className="object-cover transition duration-500 group-hover:scale-[1.02]"
           sizes="(max-width: 768px) 100vw, 33vw"
+          loading={shouldEagerLoad ? "eager" : "lazy"}
+          fetchPriority={eagerLoad ? "high" : "auto"}
+          quality={70}
+          style={{ objectPosition: getMountainImageObjectPosition(mountain.slug) }}
         />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/35 via-slate-900/10 to-transparent" />
+        <span
+          className={`absolute left-3 top-3 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+            mountain.image_verified
+              ? "border-emerald-200 bg-emerald-50/95 text-emerald-800"
+              : "border-amber-200 bg-amber-50/95 text-amber-800"
+          }`}
+        >
+          {mountain.image_verified ? "Verified photo" : "Photo pending"}
+        </span>
       </div>
 
       <div className="mt-3 flex items-start gap-3">
@@ -567,7 +584,7 @@ export function MountainListClient({ mountains, regions }: Props) {
         ) : sortBy === "difficulty" ? (
           groupedOrder
             .filter((band) => (grouped.get(band)?.length ?? 0) > 0)
-            .map((band) => {
+            .map((band, bandIndex) => {
               const mountainsByBand = grouped.get(band) ?? [];
 
               return (
@@ -579,8 +596,8 @@ export function MountainListClient({ mountains, regions }: Props) {
                   </div>
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {mountainsByBand.map((mountain) => (
-                      <MountainCard key={mountain.id} mountain={mountain} />
+                    {mountainsByBand.map((mountain, index) => (
+                      <MountainCard key={mountain.id} mountain={mountain} eagerLoad={bandIndex === 0 && index < 3} />
                     ))}
                   </div>
                 </section>
@@ -589,8 +606,8 @@ export function MountainListClient({ mountains, regions }: Props) {
         ) : (
           <section className="scroll-mt-44 md:scroll-mt-32">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {sorted.map((mountain) => (
-                <MountainCard key={mountain.id} mountain={mountain} />
+              {sorted.map((mountain, index) => (
+                <MountainCard key={mountain.id} mountain={mountain} eagerLoad={index < 3} />
               ))}
             </div>
           </section>

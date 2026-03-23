@@ -24,7 +24,16 @@ Mobile-first hiking weather checker for mountain spots in the Philippines.
 ```bash
 npm install
 cp .env.example .env.local
+npm run images:sync
 npm run dev
+```
+
+`npm run images:sync` downloads all mountains marked `image_verified: true` from Wikimedia Commons into `public/mountains/verified` and rewrites their `image_url` values to local assets for faster loading.
+
+For SEO metadata (canonical URLs, robots, sitemap), set your deployed domain in `.env.local`:
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://your-domain.com
 ```
 
 ### Optional second weather API
