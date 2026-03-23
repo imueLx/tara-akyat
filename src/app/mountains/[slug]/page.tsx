@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DateWeatherChecker } from "@/components/mountains/date-weather-checker";
 import { DifficultyPill } from "@/components/mountains/difficulty-pill";
+import { MountainPhotoLightbox } from "@/components/mountains/mountain-photo-lightbox";
 import { TipsList } from "@/components/mountains/tips-list";
-import { getMountainVerificationSummary } from "@/lib/content-quality";
 import { getMountainImageObjectPosition } from "@/lib/mountain-image";
 import { getCommunityTipByMountainId, getMountainBySlug, getMountains, getTipsByMountainId } from "@/lib/mountains";
 import { DEFAULT_OG_IMAGE_PATH, SITE_NAME, absoluteUrl } from "@/lib/seo";
@@ -15,6 +14,63 @@ type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ date?: string }>;
 };
+
+const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+
+function sortMonths(months: string[]): string[] {
+  return [...months].sort((a, b) => monthOrder.indexOf(a as (typeof monthOrder)[number]) - monthOrder.indexOf(b as (typeof monthOrder)[number]));
+}
+
+function formatMonthWindow(months: string[]): string {
+  const ordered = sortMonths(months);
+
+  if (ordered.length === 0) {
+    return "Year-round";
+  }
+
+  if (ordered.length === 1) {
+    return ordered[0];
+  }
+
+  return `${ordered[0]} to ${ordered[ordered.length - 1]}`;
+}
+
+function getSeasonFeel(months: string[]): { eyebrow: string; title: string; body: string } {
+  const ordered = sortMonths(months);
+  const window = formatMonthWindow(ordered);
+  const startsLateYear = ordered.some((month) => month === "Nov" || month === "Dec");
+  const includesSummer = ordered.some((month) => month === "Mar" || month === "Apr" || month === "May");
+
+  if (ordered.length <= 2) {
+    return {
+      eyebrow: "Narrower window",
+      title: `Usually better around ${window}.`,
+      body: "This mountain is best treated as having a tighter seasonal window, so these months are a smarter starting point before checking trail updates and the exact weather closer to your hike.",
+    };
+  }
+
+  if (startsLateYear && includesSummer) {
+    return {
+      eyebrow: "Broader season",
+      title: `Usually workable from ${window}.`,
+      body: "This mountain has a longer workable season than most, which gives you a bit more flexibility when planning while still making it worth checking the exact conditions near your hike date.",
+    };
+  }
+
+  if (startsLateYear) {
+    return {
+      eyebrow: "Typical dry-season pick",
+      title: `Usually favored from ${window}.`,
+      body: "This follows the more common cool-to-dry hiking season, so these months are best treated as a reliable planning guide rather than a guarantee for every trip.",
+    };
+  }
+
+  return {
+    eyebrow: "Season baseline",
+    title: `Usually aim for ${window}.`,
+    body: "The month range here works best as a general planning guide, then refined with day-specific weather and local trail conditions before you lock in the hike.",
+  };
+}
 
 export async function generateStaticParams() {
   return getMountains().map((mountain) => ({ slug: mountain.slug }));
@@ -78,7 +134,8 @@ export default async function MountainPage({ params, searchParams }: Props) {
 
   const tips = getTipsByMountainId(mountain.id);
   const communityTip = getCommunityTipByMountainId(mountain.id);
-  const verification = getMountainVerificationSummary(mountain);
+  const orderedBestMonths = sortMonths(mountain.best_months);
+  const seasonFeel = getSeasonFeel(mountain.best_months);
   const difficultyNote =
     mountain.difficulty_source_note ??
     "This score is a mountain-level estimate. Route condition, season, weather, and closures can make the actual hike easier or harder.";
@@ -129,117 +186,98 @@ export default async function MountainPage({ params, searchParams }: Props) {
           <span>Back to list</span>
         </Link>
       </div>
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        {mountain.image_source_url ? (
-          <a
-            href={mountain.image_source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`Open source photo for ${mountain.name}`}
-            className="group relative mb-4 block h-52 w-full overflow-hidden rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 sm:h-64"
-          >
-            <Image
-              src={mountain.image_url}
-              alt={mountain.name}
-              fill
-              className="object-cover transition duration-300 group-hover:scale-[1.02]"
-              sizes="(max-width: 768px) 100vw, 960px"
-              preload
-              quality={75}
-              style={{ objectPosition: getMountainImageObjectPosition(mountain.slug) }}
-            />
-            <div className="pointer-events-none absolute inset-0 bg-slate-950/0 transition duration-300 group-hover:bg-slate-950/8" />
-          </a>
-        ) : (
-          <div className="relative mb-4 h-52 w-full overflow-hidden rounded-2xl sm:h-64">
-            <Image
-              src={mountain.image_url}
-              alt={mountain.name}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 960px"
-              preload
-              quality={75}
-              style={{ objectPosition: getMountainImageObjectPosition(mountain.slug) }}
+      <section className="overflow-hidden rounded-[32px] border border-slate-200/80 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.10)]">
+        <div className="bg-[radial-gradient(circle_at_top_left,_rgba(14,116,144,0.10),_transparent_35%),linear-gradient(180deg,_rgba(248,250,252,0.96),_rgba(255,255,255,1))] p-5 sm:p-6">
+          <MountainPhotoLightbox
+            name={mountain.name}
+            imageUrl={mountain.image_url}
+            imageSourceUrl={mountain.image_source_url}
+            objectPosition={getMountainImageObjectPosition(mountain.slug)}
+          />
+          {mountain.image_source_url ? (
+            <div className="mb-3 text-[10px] leading-4 text-slate-500">
+              <p>
+                Photo: {mountain.image_credit ?? "Wikimedia Commons contributor"}
+                {mountain.image_license ? ` • ${mountain.image_license}` : ""}
+              </p>
+              <a
+                href={mountain.image_source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-[10px] font-medium text-sky-700 hover:text-sky-800"
+              >
+                Open image source
+              </a>
+            </div>
+          ) : (
+            <p className="mb-3 text-[10px] leading-4 text-slate-500">Photo source details are not available for this mountain yet.</p>
+          )}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="max-w-2xl">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Philippine hiking guide</p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2.15rem]">{mountain.name}</h1>
+              <p className="mt-1.5 text-sm text-slate-600 sm:text-[15px]">
+                {mountain.province}, {mountain.region}
+              </p>
+            </div>
+            <DifficultyPill
+              score={mountain.difficulty_score}
+              interactive
+              note={difficultyNote}
+              sourceUrl={mountain.difficulty_source_url}
             />
           </div>
-        )}
-        {mountain.image_source_url ? (
-          <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-[11px] leading-5 text-slate-600">
-            <p className="font-medium text-[11px] text-slate-900">
-              Photo credit: {mountain.image_credit ?? "Wikimedia Commons contributor"}
-            </p>
-            {mountain.image_license ? <p className="mt-0.5">License: {mountain.image_license}</p> : null}
-            <a
-              href={mountain.image_source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1.5 inline-block text-[11px] font-medium text-sky-700 hover:text-sky-800"
-            >
-              Open image source
-            </a>
-          </div>
-        ) : (
-          <p className="mb-3 text-xs text-slate-500">Exact mountain photo is still pending verification for this mountain.</p>
-        )}
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">{mountain.name}</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              {mountain.province}, {mountain.region}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${verification.photoTone}`}>
-                {verification.photoLabel}
-              </span>
-              <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${verification.difficultyTone}`}>
-                {verification.difficultyLabel}
-              </span>
+
+          <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-700 sm:text-[15px]">{mountain.summary}</p>
+
+          {communityTip ? (
+            <div className="mt-5 rounded-[24px] border border-orange-200/80 bg-[linear-gradient(135deg,rgba(255,247,237,0.95),rgba(255,251,235,0.92))] px-4 py-4 shadow-[0_14px_30px_rgba(251,146,60,0.08)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-orange-700">From hikers</p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{communityTip.note}</p>
+              <a
+                href={communityTip.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block text-xs font-semibold text-sky-700 hover:text-sky-800"
+              >
+                Open Reddit source
+              </a>
+            </div>
+          ) : null}
+
+          <div className="mt-6 grid gap-3 lg:grid-cols-[1.1fr,0.9fr]">
+            <div className="rounded-[28px] border border-slate-200/80 bg-white/90 p-4 shadow-[0_14px_32px_rgba(15,23,42,0.06)] sm:p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">At a glance</p>
+              <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="rounded-[22px] bg-slate-50 px-4 py-3">
+                  <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Elevation</dt>
+                  <dd className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">{mountain.elevation_m.toLocaleString()} m</dd>
+                </div>
+                <div className="rounded-[22px] bg-slate-50 px-4 py-3">
+                  <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Best months</dt>
+                  <dd className="mt-2 flex flex-wrap gap-2">
+                    {orderedBestMonths.map((month) => (
+                      <span
+                        key={month}
+                        className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-800 shadow-[0_4px_10px_rgba(15,23,42,0.04)]"
+                      >
+                        {month}
+                      </span>
+                    ))}
+                  </dd>
+                  <p className="mt-2 text-xs leading-5 text-slate-600">Typical hiking window: {formatMonthWindow(orderedBestMonths)}.</p>
+                </div>
+              </dl>
+            </div>
+            <div className="rounded-[28px] border border-slate-200/80 bg-slate-950 px-4 py-4 text-slate-50 shadow-[0_20px_40px_rgba(15,23,42,0.18)] sm:p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{seasonFeel.eyebrow}</p>
+              <p className="mt-3 text-lg font-semibold tracking-tight">{seasonFeel.title}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                {seasonFeel.body}
+              </p>
             </div>
           </div>
-          <DifficultyPill
-            score={mountain.difficulty_score}
-            interactive
-            note={difficultyNote}
-            sourceUrl={mountain.difficulty_source_url}
-          />
         </div>
-
-        <p className="mt-3 text-sm text-slate-700">{mountain.summary}</p>
-
-        {communityTip ? (
-          <div className="mt-4 rounded-2xl border border-orange-200 bg-orange-50/70 px-4 py-4">
-            <p className="text-[11px] uppercase tracking-[0.12em] text-orange-700">From hikers</p>
-            <p className="mt-2 text-sm leading-6 text-slate-700">{communityTip.note}</p>
-            <a
-              href={communityTip.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-block text-xs font-semibold text-sky-700 hover:text-sky-800"
-            >
-              Open Reddit source
-            </a>
-          </div>
-        ) : null}
-
-        <dl className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-700 sm:grid-cols-4">
-          <div className="rounded-xl bg-slate-50 px-3 py-2">
-            <dt>Elevation</dt>
-            <dd className="font-semibold">{mountain.elevation_m.toLocaleString()} m</dd>
-          </div>
-          <div className="rounded-xl bg-slate-50 px-3 py-2">
-            <dt>Latitude</dt>
-            <dd className="font-semibold">{mountain.lat}</dd>
-          </div>
-          <div className="rounded-xl bg-slate-50 px-3 py-2">
-            <dt>Longitude</dt>
-            <dd className="font-semibold">{mountain.lon}</dd>
-          </div>
-          <div className="rounded-xl bg-slate-50 px-3 py-2">
-            <dt>Best months</dt>
-            <dd className="font-semibold">{mountain.best_months.join(", ")}</dd>
-          </div>
-        </dl>
       </section>
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.05fr,0.95fr]">
         <DateWeatherChecker lat={mountain.lat} lon={mountain.lon} initialDate={date} />

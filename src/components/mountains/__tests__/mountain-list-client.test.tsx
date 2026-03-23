@@ -63,7 +63,7 @@ describe("MountainListClient", () => {
 
     expect(screen.getByRole("heading", { level: 2, name: "Alphabetical browse" })).toBeInTheDocument();
 
-    const mountainLinks = screen.getAllByRole("link", { name: "View mountain" });
+    const mountainLinks = screen.getAllByRole("link", { name: "Open guide" });
     expect(mountainLinks[0]).toHaveAttribute("href", "/mountains/mt-apo");
     expect(mountainLinks[1]).toHaveAttribute("href", "/mountains/mt-ulap");
   });
@@ -104,5 +104,29 @@ describe("MountainListClient", () => {
     });
 
     expect(screen.queryByRole("menu", { name: "Sort mountains options" })).not.toBeInTheDocument();
+  });
+
+  it("filters mountains by custom region menu", async () => {
+    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Filter by region" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Mindanao" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Mt. Apo")).toBeInTheDocument();
+      expect(screen.queryByText("Mt. Ulap")).not.toBeInTheDocument();
+    });
+  });
+
+  it("filters mountains by custom difficulty menu", async () => {
+    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Filter by difficulty" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Advanced (7-8/9)" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Mt. Apo")).toBeInTheDocument();
+      expect(screen.queryByText("Mt. Ulap")).not.toBeInTheDocument();
+    });
   });
 });

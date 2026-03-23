@@ -8,7 +8,6 @@ import { useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { RecommendationPill } from "@/components/mountains/recommendation-pill";
-import { getMountainVerificationSummary } from "@/lib/content-quality";
 import { addDays, differenceInDays, formatISODate, isValidDate } from "@/lib/date";
 import { getMountainImageObjectPosition } from "@/lib/mountain-image";
 import { getWeatherClientCache, setWeatherClientCache } from "@/lib/weather/client-cache";
@@ -634,7 +633,6 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
     () => mountains.find((mountain) => mountain.id === mountainId) ?? null,
     [mountainId, mountains],
   );
-  const verification = selectedMountain ? getMountainVerificationSummary(selectedMountain) : null;
   const mountainOptions = useMemo<MountainOption[]>(
     () =>
       mountains.map((mountain) => ({
@@ -1243,18 +1241,8 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                     {selectedMountain.province}, {selectedMountain.region}
                   </p>
                   <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-700">{selectedMountain.summary}</p>
-                  {verification ? (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${verification.photoTone}`}>
-                        {verification.photoLabel}
-                      </span>
-                      <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${verification.difficultyTone}`}>
-                        {verification.difficultyLabel}
-                      </span>
-                    </div>
-                  ) : null}
-                </div>
-              </section>
+                  </div>
+                </section>
             ) : null}
 
             <div className="sticky bottom-3 z-20 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur xl:static xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none">

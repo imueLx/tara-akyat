@@ -24,6 +24,12 @@ type SortConfig = {
   description: string;
 };
 
+type FilterOption = {
+  value: string;
+  label: string;
+  eyebrow: string;
+};
+
 const difficultyOptions: Array<"All" | DifficultyBand> = ["All", "Beginner", "Intermediate", "Advanced", "Expert"];
 const groupedOrder: DifficultyBand[] = ["Beginner", "Intermediate", "Advanced", "Expert"];
 const sortOptions: SortConfig[] = [
@@ -52,6 +58,8 @@ const sortOptions: SortConfig[] = [
     description: "Use your app's current references as a popularity signal.",
   },
 ];
+
+const monthOrder = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] as const;
 
 function SearchIcon() {
   return (
@@ -119,61 +127,113 @@ function getSortHeading(sortBy: SortOption): string {
   return "By difficulty";
 }
 
+function formatMonthShort(month: string): string {
+  return month.slice(0, 3);
+}
+
+function formatBestMonthsWindow(months: string[]): string {
+  const ordered = [...months].sort(
+    (a, b) => monthOrder.indexOf(a as (typeof monthOrder)[number]) - monthOrder.indexOf(b as (typeof monthOrder)[number]),
+  );
+
+  if (ordered.length === 0) {
+    return "Year-round";
+  }
+
+  if (ordered.length === 1) {
+    return formatMonthShort(ordered[0]);
+  }
+
+  return `${formatMonthShort(ordered[0])} - ${formatMonthShort(ordered[ordered.length - 1])}`;
+}
+
+function FilterIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3.5 5.5h13" />
+      <path d="M6.5 10h7" />
+      <path d="M8.5 14.5h3" />
+    </svg>
+  );
+}
+
 function MountainCard({ mountain, eagerLoad = false }: { mountain: Mountain; eagerLoad?: boolean }) {
   const isPlaceholderImage = mountain.image_url === "/mountains/placeholder.svg";
   const shouldEagerLoad = eagerLoad || isPlaceholderImage;
+  const bestMonthsWindow = formatBestMonthsWindow(mountain.best_months);
+  const band = difficultyBand(mountain.difficulty_score);
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/95 p-3.5 shadow-[0_12px_30px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_18px_34px_rgba(15,23,42,0.10)]">
-      <div className="relative h-40 w-full overflow-hidden rounded-[22px] bg-slate-100 sm:h-44">
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-[22px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] p-3 shadow-[0_16px_36px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-[0_24px_48px_rgba(15,23,42,0.14)]">
+      <div className="pointer-events-none absolute inset-x-8 top-0 h-20 rounded-b-[28px] bg-sky-100/40 blur-2xl transition duration-300 group-hover:bg-sky-100/60" />
+
+      <div className="relative h-44 w-full overflow-hidden rounded-[16px] bg-slate-100 sm:h-48">
+        <Link href={`/mountains/${mountain.slug}`} aria-label={`Open ${mountain.name}`} className="absolute inset-0 z-10">
+          <span className="sr-only">Open {mountain.name}</span>
+        </Link>
         <Image
           src={mountain.image_url}
           alt={mountain.name}
           fill
-          className="object-cover transition duration-500 group-hover:scale-[1.02]"
+          className="object-cover transition duration-700 group-hover:scale-[1.04]"
           sizes="(max-width: 768px) 100vw, 33vw"
           loading={shouldEagerLoad ? "eager" : "lazy"}
           fetchPriority={eagerLoad ? "high" : "auto"}
           quality={70}
           style={{ objectPosition: getMountainImageObjectPosition(mountain.slug) }}
         />
-        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/35 via-slate-900/10 to-transparent" />
-        <span
-          className={`absolute left-3 top-3 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
-            mountain.image_verified
-              ? "border-emerald-200 bg-emerald-50/95 text-emerald-800"
-              : "border-amber-200 bg-amber-50/95 text-amber-800"
-          }`}
-        >
-          {mountain.image_verified ? "Verified photo" : "Photo pending"}
-        </span>
-      </div>
-
-      <div className="mt-3 flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <h3 className="text-[1.02rem] font-semibold tracking-tight text-slate-950">{mountain.name}</h3>
-          <p className="mt-0.5 text-xs text-slate-600">
-            {mountain.province}
-          </p>
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.02),rgba(15,23,42,0.08)_45%,rgba(15,23,42,0.68))]" />
+        <div className="absolute inset-x-3 top-3 z-20 flex items-start justify-between gap-2">
+          <span className="rounded-[999px] border border-white/35 bg-white/14 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white backdrop-blur-md">
+            {mountain.region}
+          </span>
+          <DifficultyPill score={mountain.difficulty_score} />
         </div>
-        <DifficultyPill score={mountain.difficulty_score} />
+        <div className="absolute inset-x-3 bottom-3 z-20 flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/72">{mountain.province}</p>
+            <h3 className="mt-1 line-clamp-2 text-[1.08rem] font-semibold tracking-tight text-white">{mountain.name}</h3>
+          </div>
+        </div>
       </div>
 
-      <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-700">{mountain.summary}</p>
+      <div className="relative mt-3 flex flex-1 flex-col px-1">
+        <div className="flex flex-wrap gap-2">
+          <span className="rounded-[999px] border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+            {band}
+          </span>
+          <span className="rounded-[999px] border border-sky-200/70 bg-sky-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-800">
+            Best {bestMonthsWindow}
+          </span>
+        </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-          {mountain.elevation_m.toLocaleString()} m
-        </span>
-      </div>
+        <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-700">{mountain.summary}</p>
 
-      <div className="mt-auto pt-4">
-        <Link
-          href={`/mountains/${mountain.slug}`}
-          className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-950 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2"
-        >
-          View mountain
-        </Link>
+        <div className="mt-4 grid grid-cols-2 gap-2.5">
+          <div className="rounded-[16px] border border-slate-200/80 bg-white px-3 py-3 shadow-[0_6px_18px_rgba(15,23,42,0.04)]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Elevation</p>
+            <p className="mt-1 text-base font-semibold tracking-tight text-slate-950">{mountain.elevation_m.toLocaleString()} m</p>
+          </div>
+          <div className="rounded-[16px] border border-slate-200/80 bg-white px-3 py-3 shadow-[0_6px_18px_rgba(15,23,42,0.04)]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Season</p>
+            <p className="mt-1 text-base font-semibold tracking-tight text-slate-950">{bestMonthsWindow}</p>
+          </div>
+        </div>
+
+        <div className="mt-auto pt-4">
+          <Link
+            href={`/mountains/${mountain.slug}`}
+            className="inline-flex w-full items-stretch overflow-hidden rounded-[16px] border border-slate-900 bg-slate-950 text-sm font-semibold text-white transition hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2"
+          >
+            <span className="flex flex-1 items-center px-4 py-3">Open guide</span>
+            <span className="flex items-center justify-center border-l border-white/12 bg-white/8 px-3 text-white/80 transition group-hover:bg-white/12 group-hover:text-white group-hover:translate-x-0.5">
+              <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4.5 10h11" />
+                <path d="m10.5 4 5.5 6-5.5 6" />
+              </svg>
+            </span>
+          </Link>
+        </div>
       </div>
     </article>
   );
@@ -186,6 +246,8 @@ export function MountainListClient({ mountains, regions }: Props) {
   const [difficulty, setDifficulty] = useState<"All" | DifficultyBand>("All");
   const [sortBy, setSortBy] = useState<SortOption>("difficulty");
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [showRegionMenu, setShowRegionMenu] = useState(false);
+  const [showDifficultyMenu, setShowDifficultyMenu] = useState(false);
 
   const sortButtonRef = useRef<HTMLButtonElement | null>(null);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
@@ -193,6 +255,18 @@ export function MountainListClient({ mountains, regions }: Props) {
   const pendingSortFocusIndexRef = useRef<number | null>(null);
   const restoreSortButtonFocusRef = useRef(false);
   const sortMenuId = useId();
+  const regionButtonRef = useRef<HTMLButtonElement | null>(null);
+  const regionMenuRef = useRef<HTMLDivElement | null>(null);
+  const regionItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const pendingRegionFocusIndexRef = useRef<number | null>(null);
+  const restoreRegionButtonFocusRef = useRef(false);
+  const regionMenuId = useId();
+  const difficultyButtonRef = useRef<HTMLButtonElement | null>(null);
+  const difficultyMenuRef = useRef<HTMLDivElement | null>(null);
+  const difficultyItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const pendingDifficultyFocusIndexRef = useRef<number | null>(null);
+  const restoreDifficultyButtonFocusRef = useRef(false);
+  const difficultyMenuId = useId();
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -289,6 +363,30 @@ export function MountainListClient({ mountains, regions }: Props) {
     sortOptions.findIndex((option) => option.value === sortBy),
     0,
   );
+  const regionOptions: FilterOption[] = useMemo(
+    () => [
+      { value: "All", label: "All regions", eyebrow: "Region" },
+      ...regions.map((item) => ({ value: item, label: item, eyebrow: "Region" })),
+    ],
+    [regions],
+  );
+  const difficultyFilterOptions: FilterOption[] = useMemo(
+    () =>
+      difficultyOptions.map((item) => ({
+        value: item,
+        label: item === "All" ? "All difficulty groups" : `${item} (${difficultyRangeLabel(item)}/9)`,
+        eyebrow: "Difficulty",
+      })),
+    [],
+  );
+  const activeRegionIndex = Math.max(
+    regionOptions.findIndex((option) => option.value === region),
+    0,
+  );
+  const activeDifficultyIndex = Math.max(
+    difficultyFilterOptions.findIndex((option) => option.value === difficulty),
+    0,
+  );
   const hasActiveFilters = query.trim().length > 0 || region !== "All" || difficulty !== "All";
 
   function clearFilters() {
@@ -298,6 +396,8 @@ export function MountainListClient({ mountains, regions }: Props) {
   }
 
   function openSortMenu(targetIndex = activeSortIndex) {
+    setShowRegionMenu(false);
+    setShowDifficultyMenu(false);
     pendingSortFocusIndexRef.current = targetIndex;
     setShowSortMenu(true);
   }
@@ -315,6 +415,50 @@ export function MountainListClient({ mountains, regions }: Props) {
   function selectSortOption(value: SortOption) {
     setSortBy(value);
     closeSortMenu({ restoreFocus: true });
+  }
+
+  function openRegionMenu(targetIndex = activeRegionIndex) {
+    setShowSortMenu(false);
+    setShowDifficultyMenu(false);
+    pendingRegionFocusIndexRef.current = targetIndex;
+    setShowRegionMenu(true);
+  }
+
+  function closeRegionMenu(options?: { restoreFocus?: boolean }) {
+    restoreRegionButtonFocusRef.current = options?.restoreFocus ?? false;
+    setShowRegionMenu(false);
+  }
+
+  function focusRegionItem(index: number) {
+    const nextIndex = (index + regionOptions.length) % regionOptions.length;
+    regionItemRefs.current[nextIndex]?.focus();
+  }
+
+  function selectRegionOption(value: string) {
+    setRegion(value);
+    closeRegionMenu({ restoreFocus: true });
+  }
+
+  function openDifficultyMenu(targetIndex = activeDifficultyIndex) {
+    setShowSortMenu(false);
+    setShowRegionMenu(false);
+    pendingDifficultyFocusIndexRef.current = targetIndex;
+    setShowDifficultyMenu(true);
+  }
+
+  function closeDifficultyMenu(options?: { restoreFocus?: boolean }) {
+    restoreDifficultyButtonFocusRef.current = options?.restoreFocus ?? false;
+    setShowDifficultyMenu(false);
+  }
+
+  function focusDifficultyItem(index: number) {
+    const nextIndex = (index + difficultyFilterOptions.length) % difficultyFilterOptions.length;
+    difficultyItemRefs.current[nextIndex]?.focus();
+  }
+
+  function selectDifficultyOption(value: "All" | DifficultyBand) {
+    setDifficulty(value);
+    closeDifficultyMenu({ restoreFocus: true });
   }
 
   function handleSortTriggerKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
@@ -366,6 +510,65 @@ export function MountainListClient({ mountains, regions }: Props) {
     }
   }
 
+  function handleFilterTriggerKeyDown(
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    openMenu: (targetIndex?: number) => void,
+    lastIndex: number,
+  ) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      openMenu(0);
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      openMenu(lastIndex);
+    }
+  }
+
+  function handleFilterOptionKeyDown(
+    index: number,
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    focusItem: (nextIndex: number) => void,
+    closeMenu: (options?: { restoreFocus?: boolean }) => void,
+    totalItems: number,
+  ) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      focusItem(index + 1);
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      focusItem(index - 1);
+      return;
+    }
+
+    if (event.key === "Home") {
+      event.preventDefault();
+      focusItem(0);
+      return;
+    }
+
+    if (event.key === "End") {
+      event.preventDefault();
+      focusItem(totalItems - 1);
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMenu({ restoreFocus: true });
+      return;
+    }
+
+    if (event.key === "Tab") {
+      closeMenu();
+    }
+  }
+
   useEffect(() => {
     if (!showSortMenu || typeof document === "undefined") {
       return;
@@ -385,6 +588,42 @@ export function MountainListClient({ mountains, regions }: Props) {
   }, [showSortMenu]);
 
   useEffect(() => {
+    if (!showRegionMenu || typeof document === "undefined") {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!regionMenuRef.current?.contains(event.target as Node)) {
+        closeRegionMenu();
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [showRegionMenu]);
+
+  useEffect(() => {
+    if (!showDifficultyMenu || typeof document === "undefined") {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!difficultyMenuRef.current?.contains(event.target as Node)) {
+        closeDifficultyMenu();
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [showDifficultyMenu]);
+
+  useEffect(() => {
     if (!showSortMenu) {
       if (restoreSortButtonFocusRef.current) {
         restoreSortButtonFocusRef.current = false;
@@ -400,6 +639,40 @@ export function MountainListClient({ mountains, regions }: Props) {
       pendingSortFocusIndexRef.current = null;
     });
   }, [activeSortIndex, showSortMenu]);
+
+  useEffect(() => {
+    if (!showRegionMenu) {
+      if (restoreRegionButtonFocusRef.current) {
+        restoreRegionButtonFocusRef.current = false;
+        regionButtonRef.current?.focus();
+      }
+      return;
+    }
+
+    const focusIndex = pendingRegionFocusIndexRef.current ?? activeRegionIndex;
+
+    requestAnimationFrame(() => {
+      regionItemRefs.current[focusIndex]?.focus();
+      pendingRegionFocusIndexRef.current = null;
+    });
+  }, [activeRegionIndex, showRegionMenu]);
+
+  useEffect(() => {
+    if (!showDifficultyMenu) {
+      if (restoreDifficultyButtonFocusRef.current) {
+        restoreDifficultyButtonFocusRef.current = false;
+        difficultyButtonRef.current?.focus();
+      }
+      return;
+    }
+
+    const focusIndex = pendingDifficultyFocusIndexRef.current ?? activeDifficultyIndex;
+
+    requestAnimationFrame(() => {
+      difficultyItemRefs.current[focusIndex]?.focus();
+      pendingDifficultyFocusIndexRef.current = null;
+    });
+  }, [activeDifficultyIndex, showDifficultyMenu]);
 
   function renderSortControl() {
     return (
@@ -420,9 +693,9 @@ export function MountainListClient({ mountains, regions }: Props) {
             openSortMenu();
           }}
           onKeyDown={handleSortTriggerKeyDown}
-          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/95 px-2.5 py-1.5 text-left shadow-sm transition hover:border-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 sm:gap-2 sm:rounded-2xl sm:px-3 sm:py-2"
+          className="inline-flex items-center gap-1.5 rounded-[16px] border border-slate-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] px-2.5 py-1.5 text-left shadow-[0_12px_24px_rgba(15,23,42,0.08)] transition hover:border-slate-300 hover:shadow-[0_16px_28px_rgba(15,23,42,0.12)] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 sm:gap-2 sm:px-3 sm:py-2"
         >
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 text-white sm:h-8 sm:w-8">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-[12px] bg-slate-950 text-white sm:h-8 sm:w-8">
             <SortIcon />
           </span>
           <span className="hidden min-w-0 sm:block">
@@ -441,7 +714,7 @@ export function MountainListClient({ mountains, regions }: Props) {
             role="menu"
             aria-label="Sort mountains options"
             aria-orientation="vertical"
-            className="absolute right-0 top-[calc(100%+0.5rem)] z-30 w-52 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_36px_rgba(15,23,42,0.16)] sm:w-60 sm:max-w-[calc(100vw-2rem)]"
+            className="absolute right-0 top-[calc(100%+0.6rem)] z-[80] w-52 max-w-[calc(100vw-1.5rem)] rounded-[18px] border border-slate-200 bg-white/98 p-2 shadow-[0_24px_44px_rgba(15,23,42,0.18)] backdrop-blur sm:w-60 sm:max-w-[calc(100vw-2rem)]"
           >
             <div className="space-y-1">
               {sortOptions.map((option) => (
@@ -457,7 +730,7 @@ export function MountainListClient({ mountains, regions }: Props) {
                   tabIndex={sortBy === option.value ? 0 : -1}
                   onClick={() => selectSortOption(option.value)}
                   onKeyDown={(event) => handleSortOptionKeyDown(sortOptions.findIndex((item) => item.value === option.value), event)}
-                  className={`flex w-full items-start justify-between rounded-xl px-3 py-2 text-left transition sm:py-2.5 ${
+                  className={`flex w-full items-start justify-between rounded-[14px] px-3 py-2 text-left transition sm:py-2.5 ${
                     sortBy === option.value ? "bg-slate-950 text-white" : "text-slate-700 hover:bg-slate-50"
                   }`}
                 >
@@ -477,15 +750,110 @@ export function MountainListClient({ mountains, regions }: Props) {
     );
   }
 
+  function renderFilterControl(params: {
+    buttonRef: React.RefObject<HTMLButtonElement | null>;
+    menuRef: React.RefObject<HTMLDivElement | null>;
+    menuId: string;
+    label: string;
+    valueLabel: string;
+    isOpen: boolean;
+    onToggle: () => void;
+    onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
+    options: FilterOption[];
+    selectedValue: string;
+    itemRefs: React.MutableRefObject<Array<HTMLButtonElement | null>>;
+    onSelect: (value: string) => void;
+    onOptionKeyDown: (index: number, event: React.KeyboardEvent<HTMLButtonElement>) => void;
+  }) {
+    return (
+      <div ref={params.menuRef} className="relative">
+        <button
+          ref={params.buttonRef}
+          type="button"
+          aria-label={`Filter by ${params.label.toLowerCase()}`}
+          aria-haspopup="menu"
+          aria-expanded={params.isOpen}
+          aria-controls={params.menuId}
+          onClick={params.onToggle}
+          onKeyDown={params.onKeyDown}
+          className="inline-flex w-full items-center justify-between gap-3 rounded-[16px] border border-slate-200 bg-white px-3 py-3 text-left shadow-[0_8px_20px_rgba(15,23,42,0.05)] transition hover:border-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-slate-950 text-white">
+              <FilterIcon />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[11px] uppercase tracking-[0.12em] text-slate-500">{params.label}</span>
+              <span className="block truncate text-sm font-semibold text-slate-950">{params.valueLabel}</span>
+            </span>
+          </span>
+          <span className={`shrink-0 text-slate-400 transition ${params.isOpen ? "rotate-180" : ""}`}>
+            <ChevronDownIcon />
+          </span>
+        </button>
+
+        {params.isOpen ? (
+          <div
+            id={params.menuId}
+            role="menu"
+            aria-label={`${params.label} options`}
+            aria-orientation="vertical"
+            className="absolute left-0 top-[calc(100%+0.6rem)] z-[80] w-full rounded-[18px] border border-slate-200 bg-white/98 p-2 shadow-[0_24px_44px_rgba(15,23,42,0.18)] backdrop-blur"
+          >
+            <div className="space-y-1">
+              {params.options.map((option, index) => (
+                <button
+                  key={option.value}
+                  ref={(node) => {
+                    params.itemRefs.current[index] = node;
+                  }}
+                  type="button"
+                  role="menuitemradio"
+                  aria-label={option.label}
+                  aria-checked={params.selectedValue === option.value}
+                  tabIndex={params.selectedValue === option.value ? 0 : -1}
+                  onClick={() => params.onSelect(option.value)}
+                  onKeyDown={(event) => params.onOptionKeyDown(index, event)}
+                  className={`flex w-full items-start justify-between rounded-[14px] px-3 py-2 text-left transition sm:py-2.5 ${
+                    params.selectedValue === option.value ? "bg-slate-950 text-white" : "text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <span>
+                    <span className={`block text-[11px] uppercase tracking-[0.12em] ${params.selectedValue === option.value ? "text-slate-300" : "text-slate-400"}`}>
+                      {option.eyebrow}
+                    </span>
+                    <span className="mt-0.5 block text-sm font-semibold">{option.label}</span>
+                  </span>
+                  {params.selectedValue === option.value ? <span className="ml-3 text-[11px] font-semibold uppercase tracking-[0.08em]">On</span> : null}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <section className="mx-auto w-full max-w-6xl px-3 pb-20 pt-4 sm:px-6 sm:pt-5">
       <div>
-        <div className="rounded-[26px] border border-slate-200/80 bg-white/88 p-3 shadow-[0_18px_36px_rgba(15,23,42,0.10)] backdrop-blur">
-          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-[minmax(0,1.5fr)_0.95fr_1fr]">
+        <div className="rounded-[22px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(248,250,252,0.94))] p-3 shadow-[0_20px_40px_rgba(15,23,42,0.10)] backdrop-blur sm:p-4">
+          <div className="mb-3 flex items-center justify-between gap-3 border-b border-slate-200/70 pb-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Mountain finder</p>
+              <p className="mt-1 text-sm font-semibold tracking-tight text-slate-950">Search, filter, and sort your next hike</p>
+            </div>
+            <div className="hidden rounded-[14px] border border-slate-200 bg-white px-3 py-2 text-right shadow-sm sm:block">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Showing</p>
+              <p className="mt-0.5 text-sm font-semibold text-slate-950">{sorted.length} mountains</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-[minmax(0,1.6fr)_0.9fr_0.95fr]">
             <label className="block">
               <span className="sr-only">Search mountains</span>
-              <div className="flex items-center gap-3 rounded-[22px] border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition focus-within:border-slate-300 focus-within:ring-2 focus-within:ring-sky-200/80">
-                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+              <div className="flex items-center gap-3 rounded-[16px] border border-slate-200 bg-white px-3 py-3 shadow-[0_8px_20px_rgba(15,23,42,0.05)] transition focus-within:border-slate-300 focus-within:ring-2 focus-within:ring-sky-200/80">
+                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-slate-950 text-white">
                   <SearchIcon />
                 </span>
                 <input
@@ -498,13 +866,13 @@ export function MountainListClient({ mountains, regions }: Props) {
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search Mt. Pulag or Benguet"
                 className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
-              />
+                />
                 {query.trim().length > 0 ? (
                   <button
                     type="button"
                     aria-label="Clear mountain search"
                     onClick={() => setQuery("")}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px] border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
                   >
                     <ClearIcon />
                   </button>
@@ -515,32 +883,51 @@ export function MountainListClient({ mountains, regions }: Props) {
               </div>
             </label>
 
-            <select
-              aria-label="Filter by region"
-              value={region}
-              onChange={(event) => setRegion(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none ring-sky-300 transition focus:ring focus-visible:ring-2"
-            >
-              <option value="All">All regions</option>
-              {regions.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
+            {renderFilterControl({
+              buttonRef: regionButtonRef,
+              menuRef: regionMenuRef,
+              menuId: regionMenuId,
+              label: "Region",
+              valueLabel: region === "All" ? "All regions" : region,
+              isOpen: showRegionMenu,
+              onToggle: () => {
+                if (showRegionMenu) {
+                  closeRegionMenu();
+                  return;
+                }
+                openRegionMenu();
+              },
+              onKeyDown: (event) => handleFilterTriggerKeyDown(event, openRegionMenu, regionOptions.length - 1),
+              options: regionOptions,
+              selectedValue: region,
+              itemRefs: regionItemRefs,
+              onSelect: selectRegionOption,
+              onOptionKeyDown: (index, event) =>
+                handleFilterOptionKeyDown(index, event, focusRegionItem, closeRegionMenu, regionOptions.length),
+            })}
 
-            <select
-              aria-label="Filter by difficulty"
-              value={difficulty}
-              onChange={(event) => setDifficulty(event.target.value as "All" | DifficultyBand)}
-              className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none ring-sky-300 transition focus:ring focus-visible:ring-2"
-            >
-              {difficultyOptions.map((item) => (
-                <option key={item} value={item}>
-                  {item === "All" ? "All difficulty groups" : `${item} (${difficultyRangeLabel(item)}/9)`}
-                </option>
-              ))}
-            </select>
+            {renderFilterControl({
+              buttonRef: difficultyButtonRef,
+              menuRef: difficultyMenuRef,
+              menuId: difficultyMenuId,
+              label: "Difficulty",
+              valueLabel: difficulty === "All" ? "All difficulty groups" : `${difficulty} (${difficultyRangeLabel(difficulty)}/9)`,
+              isOpen: showDifficultyMenu,
+              onToggle: () => {
+                if (showDifficultyMenu) {
+                  closeDifficultyMenu();
+                  return;
+                }
+                openDifficultyMenu();
+              },
+              onKeyDown: (event) => handleFilterTriggerKeyDown(event, openDifficultyMenu, difficultyFilterOptions.length - 1),
+              options: difficultyFilterOptions,
+              selectedValue: difficulty,
+              itemRefs: difficultyItemRefs,
+              onSelect: (value) => selectDifficultyOption(value as "All" | DifficultyBand),
+              onOptionKeyDown: (index, event) =>
+                handleFilterOptionKeyDown(index, event, focusDifficultyItem, closeDifficultyMenu, difficultyFilterOptions.length),
+            })}
           </div>
 
           {hasActiveFilters ? (
@@ -548,7 +935,7 @@ export function MountainListClient({ mountains, regions }: Props) {
               <button
                 type="button"
                 onClick={clearFilters}
-                className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+                className="rounded-[999px] border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
               >
                 Clear filters
               </button>
@@ -560,8 +947,8 @@ export function MountainListClient({ mountains, regions }: Props) {
       <div className="mt-5 space-y-5 pb-24">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-slate-950">{getSortHeading(sortBy)}</h2>
-          <div className="sticky top-24 z-20 md:top-[66px]">
-            <div className="rounded-full border border-slate-200/80 bg-white/90 p-1 shadow-[0_14px_30px_rgba(15,23,42,0.10)] backdrop-blur">
+          <div className="sticky top-24 z-[70] md:top-[66px]">
+            <div className="rounded-[18px] border border-slate-200/80 bg-white/92 p-1.5 shadow-[0_18px_36px_rgba(15,23,42,0.14)] backdrop-blur">
               {renderSortControl()}
             </div>
           </div>
