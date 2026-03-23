@@ -4,6 +4,7 @@ import type { Mountain, TipSource } from "@/types/hiking";
 
 const typedMountains = mountains as Mountain[];
 const typedTips = tips as TipSource[];
+const canonicalRegionOrder = ["Luzon", "Visayas", "Mindanao"] as const;
 
 export function getMountains(): Mountain[] {
   return typedMountains;
@@ -22,5 +23,22 @@ export function getCommunityTipByMountainId(mountainId: string): TipSource | und
 }
 
 export function getRegions(): string[] {
-  return Array.from(new Set(typedMountains.map((mountain) => mountain.region))).sort();
+  return Array.from(new Set(typedMountains.map((mountain) => mountain.region))).sort((left, right) => {
+    const leftIndex = canonicalRegionOrder.indexOf(left as (typeof canonicalRegionOrder)[number]);
+    const rightIndex = canonicalRegionOrder.indexOf(right as (typeof canonicalRegionOrder)[number]);
+
+    if (leftIndex !== -1 && rightIndex !== -1) {
+      return leftIndex - rightIndex;
+    }
+
+    if (leftIndex !== -1) {
+      return -1;
+    }
+
+    if (rightIndex !== -1) {
+      return 1;
+    }
+
+    return left.localeCompare(right);
+  });
 }

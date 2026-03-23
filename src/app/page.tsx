@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { HomePlannerClient } from "@/components/mountains/home-planner-client";
-import { getMountains } from "@/lib/mountains";
+import { getMountains, getRegions } from "@/lib/mountains";
 import { DEFAULT_OG_IMAGE_PATH, SITE_NAME, absoluteUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -56,22 +56,32 @@ type Props = {
 export default async function Home({ searchParams }: Props) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const initialDate = resolvedSearchParams?.date;
+  const regionNames = getRegions();
+  const mountainCount = getMountains().length;
   const faqs = [
     {
-      question: "Uulan ba sa Mt. Ulap sa napili kong date?",
-      answer: "Gamitin ang weather checker para makita ang rain chance, ulan in mm, at recommendation para sa date mo sa Mt. Ulap.",
+      question: "Anong ginagawa ng Tara Akyat?",
+      answer: `Tara Akyat is a hiking weather checker for ${mountainCount} Philippine mountains across ${regionNames.join(", ")}. You can compare rain chance, wind, and hiking conditions by date before your climb.`,
     },
     {
-      question: "Paano mag weather check bago mag-hike sa Philippines?",
-      answer: "Piliin ang mountain at date, tapos tingnan ang weather guidance at forecast trust para mas safe ang hike plan.",
+      question: "Puwede ba akong mag-check ng weather for different mountains, hindi lang Mt. Ulap?",
+      answer: "Yes. You can check multiple mountains like Mt. Pulag, Mt. Apo, Mt. Daraitan, Mt. Batulao, and many more. The site is meant for broad Philippine mountain weather checking, not just one trail.",
     },
     {
-      question: "Anong Tagalog words ang puwedeng gamitin sa hiking weather search?",
-      answer: "Common searches include: uulan ba sa bundok, weather check Mt. Ulap, maulan ba sa Mt. Pulag, at pwede ba mag-hike bukas.",
+      question: "Kailan pinaka-useful mag-check ng hiking weather?",
+      answer: "The most useful time is usually a few days before your hike, when day-level forecasts are more reliable. For far-ahead dates, use the result as planning guidance and recheck closer to the actual climb.",
+    },
+    {
+      question: "Anong Tagalog or Taglish searches ang bagay sa site na ito?",
+      answer: "Common searches include: uulan ba sa bundok, weather check bago mag-hike, maulan ba sa Mt. Pulag, weather sa bundok ngayon, and puwede ba mag-hike bukas.",
     },
     {
       question: "Best months for hiking sa Pilipinas?",
-      answer: "Depende sa mountain, pero puwede mong i-check ang best months sa bawat mountain page at i-verify pa rin ang weather forecast sa exact hike date.",
+      answer: "It depends on the mountain, region, and season. Each mountain page includes best months to hike, but you should still check the actual weather forecast for your target date before going.",
+    },
+    {
+      question: "Useful ba ito for beginners?",
+      answer: "Yes. Beginners can use the site to compare easier mountains, see basic weather risk signals, and avoid obviously bad weather before choosing a beginner-friendly hike.",
     },
   ] as const;
   const mountains = getMountains().map((mountain) => ({
@@ -86,6 +96,8 @@ export default async function Home({ searchParams }: Props) {
     image_verified: mountain.image_verified,
     difficulty_source_url: mountain.difficulty_source_url,
     difficulty_score: mountain.difficulty_score,
+    elevation_m: mountain.elevation_m,
+    best_months: mountain.best_months,
     summary: mountain.summary,
   }));
 
@@ -129,11 +141,17 @@ export default async function Home({ searchParams }: Props) {
         <section id="planner" className="scroll-mt-28 sm:scroll-mt-32">
           <HomePlannerClient mountains={mountains} initialDate={initialDate} />
         </section>
-        <section className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 sm:px-5">
-          <h2 className="text-base font-semibold text-slate-950 sm:text-lg">Quick hiking weather FAQ</h2>
-          <div className="mt-3 space-y-2">
+        <section className="mt-5 rounded-[22px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)] sm:px-5">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">FAQ</p>
+              <h2 className="mt-1 text-base font-semibold tracking-tight text-slate-950 sm:text-lg">Quick hiking weather FAQ</h2>
+            </div>
+            <p className="text-sm text-slate-500">Short answers for common trip-planning questions.</p>
+          </div>
+          <div className="mt-4 space-y-2.5">
             {faqs.map((faq) => (
-              <details key={faq.question} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <details key={faq.question} className="rounded-[18px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-3.5">
                 <summary className="cursor-pointer text-sm font-semibold text-slate-900">{faq.question}</summary>
                 <p className="mt-2 text-sm leading-6 text-slate-600">{faq.answer}</p>
               </details>

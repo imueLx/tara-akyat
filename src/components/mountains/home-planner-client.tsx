@@ -4,11 +4,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import Select, { type SingleValue } from "react-select";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { RecommendationPill } from "@/components/mountains/recommendation-pill";
-import { addDays, differenceInDays, formatISODate, isValidDate } from "@/lib/date";
+import { differenceInDays, formatISODate, isValidDate } from "@/lib/date";
+import { difficultyBand } from "@/lib/difficulty";
 import { getMountainImageObjectPosition } from "@/lib/mountain-image";
 import { getWeatherClientCache, setWeatherClientCache } from "@/lib/weather/client-cache";
 import { getSelectedReliability } from "@/lib/weather/reliability";
@@ -26,6 +27,8 @@ type PlannerMountain = {
   image_verified?: boolean;
   difficulty_source_url?: string;
   difficulty_score: number;
+  elevation_m?: number;
+  best_months?: string[];
   summary: string;
 };
 
@@ -51,7 +54,7 @@ type GuidanceTone = {
   chipClassName: string;
 };
 
-const SECONDARY_SOURCE_LABEL = "Another forecast source";
+const monthOrder = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] as const;
 
 type MountainOption = {
   value: string;
@@ -59,6 +62,8 @@ type MountainOption = {
   mountain: PlannerMountain;
   searchable: string;
 };
+
+type MissingPlannerRequirement = "mountain" | "date";
 
 function SectionIcon({ children }: { children: ReactNode }) {
   return (
@@ -190,8 +195,24 @@ function normalizeMountainSearch(value: string): string {
     .trim();
 }
 
-function tomorrowIso(): string {
-  return formatISODate(addDays(new Date(), 1));
+function formatMonthShort(month: string): string {
+  return month.slice(0, 3);
+}
+
+function formatBestMonthsWindow(months?: string[]): string | null {
+  if (!months || months.length === 0) {
+    return null;
+  }
+
+  const ordered = [...months].sort(
+    (a, b) => monthOrder.indexOf(a as (typeof monthOrder)[number]) - monthOrder.indexOf(b as (typeof monthOrder)[number]),
+  );
+
+  if (ordered.length === 1) {
+    return formatMonthShort(ordered[0]);
+  }
+
+  return `${formatMonthShort(ordered[0])} - ${formatMonthShort(ordered[ordered.length - 1])}`;
 }
 
 function resultSummary(result: WeatherCheckResult): string {
@@ -613,8 +634,8 @@ function scheduleResultScroll(target: HTMLElement | null) {
 }
 
 export function HomePlannerClient({ mountains, initialDate }: Props) {
-  const startingDate = initialDate && isValidDate(initialDate) ? initialDate : tomorrowIso();
-  const [mountainId, setMountainId] = useState(mountains[0]?.id ?? "");
+  const startingDate = initialDate && isValidDate(initialDate) ? initialDate : "";
+  const [mountainId, setMountainId] = useState("");
   const [isMountainPickerFocused, setIsMountainPickerFocused] = useState(false);
   const [date, setDate] = useState(startingDate);
   const [loading, setLoading] = useState(false);
@@ -625,13 +646,19 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [announceMessage, setAnnounceMessage] = useState("");
   const [showMoreDetails, setShowMoreDetails] = useState(false);
+  const [missingRequirements, setMissingRequirements] = useState<MissingPlannerRequirement[]>([]);
 
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const primaryDecisionRef = useRef<HTMLElement | null>(null);
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedMountain = useMemo(
     () => mountains.find((mountain) => mountain.id === mountainId) ?? null,
     [mountainId, mountains],
+  );
+  const selectedMountainBestMonthsWindow = useMemo(
+    () => formatBestMonthsWindow(selectedMountain?.best_months),
+    [selectedMountain],
   );
   const mountainOptions = useMemo<MountainOption[]>(
     () =>
@@ -650,16 +677,67 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
   const selectMenuPortalTarget = typeof document === "undefined" ? undefined : document.body;
 
   const todayIso = formatISODate(new Date());
-  const daysAhead = Math.max(0, differenceInDays(new Date(`${date}T00:00:00`), new Date(`${todayIso}T00:00:00`)));
-  const selectedReliability = getSelectedReliability(daysAhead);
+  const hasSelectedDate = isValidDate(date);
+  const daysAhead = hasSelectedDate ? Math.max(0, differenceInDays(new Date(`${date}T00:00:00`), new Date(`${todayIso}T00:00:00`))) : null;
+  const selectedReliability = daysAhead === null ? null : getSelectedReliability(daysAhead);
+  const hasCompleteSelection = Boolean(selectedMountain) && hasSelectedDate;
   const confidenceHint =
-    daysAhead <= 7
+    daysAhead === null
+      ? "Pick a date to see forecast trust and planning range."
+      : daysAhead <= 7
       ? "Best range for go or no-go planning."
       : daysAhead <= 15
         ? "Selected date still uses day-level forecast data, but confidence is lower than the next 7 days."
         : daysAhead <= 30
           ? "Days 16 to 30 use month-based planning outlook instead of exact day-level forecast."
           : "Beyond 30 days uses the same calendar date from the last 2 years plus month context for planning.";
+  const selectedMountainHref = selectedMountain
+    ? hasSelectedDate
+      ? `/mountains/${selectedMountain.slug}?date=${date}`
+      : `/mountains/${selectedMountain.slug}`
+    : "/mountains";
+  const primaryMissingRequirement = missingRequirements[0] ?? null;
+
+  useEffect(() => {
+    if (missingRequirements.length === 0) {
+      return;
+    }
+
+    const nextMissing = missingRequirements.filter((requirement) =>
+      requirement === "mountain" ? !selectedMountain : !hasSelectedDate,
+    );
+
+    if (nextMissing.length === 0) {
+      setMissingRequirements([]);
+      return;
+    }
+
+    if (nextMissing.length !== missingRequirements.length) {
+      setMissingRequirements(nextMissing);
+    }
+  }, [hasSelectedDate, missingRequirements, selectedMountain]);
+
+  useEffect(() => {
+    if (missingRequirements.length === 0 || typeof document === "undefined") {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMissingRequirements([]);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [missingRequirements]);
 
   const metricGuides = useMemo(() => {
     if (!result?.metrics) {
@@ -696,11 +774,52 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
     setAnnounceMessage(`${nextOption.label} selected`);
   }
 
+  function closeMissingRequirementsPrompt() {
+    setMissingRequirements([]);
+  }
+
+  function focusPlannerField(requirement: MissingPlannerRequirement) {
+    closeMissingRequirementsPrompt();
+
+    requestAnimationFrame(() => {
+      if (requirement === "mountain") {
+        const mountainInput = document.getElementById("home-mountain-search");
+        if (mountainInput instanceof HTMLElement) {
+          mountainInput.focus();
+        }
+        return;
+      }
+
+      dateInputRef.current?.focus();
+    });
+  }
+
   async function onCheck() {
+    const nextMissingRequirements: MissingPlannerRequirement[] = [];
     if (!selectedMountain) {
+      nextMissingRequirements.push("mountain");
+    }
+    if (!hasSelectedDate) {
+      nextMissingRequirements.push("date");
+    }
+
+    if (nextMissingRequirements.length > 0) {
+      setMissingRequirements(nextMissingRequirements);
+      setError(null);
+      setAnnounceMessage(
+        nextMissingRequirements.length === 2
+          ? "Choose a mountain and date first."
+          : nextMissingRequirements[0] === "mountain"
+            ? "Choose a mountain first."
+            : "Choose a date first.",
+      );
       return;
     }
 
+    const mountain = selectedMountain;
+    if (!mountain) {
+      return;
+    }
     setLoading(true);
     setError(null);
     setDetails(null);
@@ -708,7 +827,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
     setShowMoreDetails(false);
 
     try {
-      const cacheParts = [selectedMountain.lat, selectedMountain.lon, date];
+      const cacheParts = [mountain.lat, mountain.lon, date];
       const cachedResult = getWeatherClientCache<WeatherCheckResult>("check", cacheParts);
 
       if (cachedResult) {
@@ -723,7 +842,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
         return;
       }
 
-      const response = await fetch(`/api/weather/check?lat=${selectedMountain.lat}&lon=${selectedMountain.lon}&date=${date}`);
+      const response = await fetch(`/api/weather/check?lat=${mountain.lat}&lon=${mountain.lon}&date=${date}`);
       const data = (await response.json()) as WeatherCheckResult | { error: string };
 
       if (!response.ok) {
@@ -795,13 +914,90 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
   }
 
   return (
-    <section className="rounded-[32px] border border-slate-200/80 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.06)]">
+    <section className="rounded-[24px] border border-slate-200/80 bg-white shadow-[0_20px_48px_rgba(15,23,42,0.06)]">
+      {missingRequirements.length > 0 ? (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/30 px-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="planner-missing-title"
+            aria-describedby="planner-missing-description"
+            className="w-full max-w-md overflow-hidden rounded-[24px] border border-white/70 bg-[linear-gradient(160deg,#fffdfa_0%,#ffffff_48%,#f8fbff_100%)] p-5 shadow-[0_30px_80px_rgba(15,23,42,0.20)]"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-sky-100 bg-sky-50 text-sky-700 shadow-sm">
+                  <SparklesIcon />
+                </span>
+                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">Before you check</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close planner prompt"
+                onClick={closeMissingRequirementsPrompt}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </div>
+
+            <h3 id="planner-missing-title" className="mt-4 text-xl font-semibold tracking-tight text-slate-950">
+              {missingRequirements.length === 2
+                ? "Choose a mountain and date first"
+                : missingRequirements[0] === "mountain"
+                  ? "Choose a mountain first"
+                  : "Pick your hike date first"}
+            </h3>
+            <p id="planner-missing-description" className="mt-2 text-sm leading-6 text-slate-600">
+              {missingRequirements.length === 2
+                ? "Set up your hike first, then we’ll run the forecast and trust check."
+                : missingRequirements[0] === "mountain"
+                  ? "Select the mountain you want to check before we run the forecast."
+                  : "Pick the date you plan to hike so we can calculate the right forecast range."}
+            </p>
+
+            <div className="mt-4 grid grid-cols-1 gap-2">
+              {missingRequirements.map((requirement) => (
+                <div
+                  key={requirement}
+                  className="rounded-[18px] border border-white/80 bg-white/85 px-4 py-3 shadow-[0_8px_18px_rgba(15,23,42,0.05)]"
+                >
+                  <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">Required</p>
+                  <p className="mt-1 text-sm font-semibold tracking-tight text-slate-950">
+                    {requirement === "mountain" ? "Mountain selection" : "Hike date"}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => focusPlannerField(primaryMissingRequirement ?? "mountain")}
+                className="inline-flex w-full items-center justify-center rounded-[16px] bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2"
+              >
+                {primaryMissingRequirement === "date" ? "Go to date picker" : "Go to mountain picker"}
+              </button>
+              {missingRequirements.length === 2 ? (
+                <button
+                  type="button"
+                  onClick={() => focusPlannerField("date")}
+                  className="inline-flex w-full items-center justify-center rounded-[16px] border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
+                >
+                  Jump to date picker
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         {announceMessage}
       </p>
 
       <div className="grid grid-cols-1 gap-0 xl:grid-cols-[minmax(0,1.2fr),360px]">
-        <div className="order-2 bg-[linear-gradient(180deg,#fcfcfd_0%,#f8fafc_100%)] p-4 sm:p-5 xl:order-1">
+        <div className="order-2 bg-[linear-gradient(180deg,#fdfdfd_0%,#f8fafc_100%)] p-4 sm:p-5 xl:order-1">
           <div ref={resultsRef} className="scroll-mt-24 sm:scroll-mt-28" />
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
@@ -813,13 +1009,19 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                     {selectedMountain.name} • {selectedMountain.province}
                   </span>
                 ) : null}
-                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-                  {formatReadableDate(date)}
-                </span>
+                {hasSelectedDate ? (
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                    {formatReadableDate(date)}
+                  </span>
+                ) : (
+                  <span className="rounded-full border border-dashed border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
+                    Date not set
+                  </span>
+                )}
               </div>
             </div>
             <Link
-              href={selectedMountain ? `/mountains/${selectedMountain.slug}?date=${date}` : "/mountains"}
+              href={selectedMountainHref}
               className="hidden rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 sm:inline-flex"
             >
               Full details
@@ -832,7 +1034,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
             <LoadingHomeResult />
           ) : result ? (
             <div className="space-y-4" aria-live="polite" aria-atomic="true">
-              <article ref={primaryDecisionRef} className={`overflow-hidden rounded-[30px] border p-5 shadow-sm ${cardTone(result)}`}>
+              <article ref={primaryDecisionRef} className={`overflow-hidden rounded-[22px] border p-5 shadow-sm ${cardTone(result)}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -858,7 +1060,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                   </div>
                 </div>
 
-                <div className="mt-6 rounded-[24px] border border-white/70 bg-white/65 p-4 sm:p-5">
+                <div className="mt-6 rounded-[18px] border border-white/70 bg-white/65 p-4 sm:p-5">
                   <div className="flex items-center gap-2">
                     <SectionIcon>
                       <CompassIcon />
@@ -876,7 +1078,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
               </article>
 
               {metricGuides && result.metrics ? (
-                <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
+                <section className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex items-center gap-2">
                     <SectionIcon>
                       <CloudSunIcon />
@@ -916,7 +1118,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                 </section>
               ) : null}
 
-              <article className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
+              <article className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
@@ -925,7 +1127,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                       </SectionIcon>
                       <p className="text-sm font-semibold text-slate-950">How reliable</p>
                     </div>
-                    <p className="ml-10 text-xs text-slate-500">{selectedReliability.label} outlook</p>
+                    <p className="ml-10 text-xs text-slate-500">{result.reliability.selectedLabel} outlook</p>
                   </div>
                   <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${reliabilityTone(result.reliability.estimatedAccuracy)}`}>
                     {result.reliability.estimatedAccuracy >= 85 ? "High trust" : result.reliability.estimatedAccuracy >= 65 ? "Moderate trust" : "Low trust"}
@@ -935,7 +1137,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                 <p className="mt-2 text-sm leading-6 text-slate-600">{reliabilityMeaning(result.reliability.estimatedAccuracy)}</p>
               </article>
 
-              <section className="rounded-[30px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+              <section className="rounded-[22px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-4 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
                 <button
                   type="button"
                   onClick={onToggleMoreDetails}
@@ -975,7 +1177,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                 ) : details ? (
                   <div className={`mt-4 grid grid-cols-1 gap-3 ${shouldShowSecondaryForecastCard ? "sm:grid-cols-2" : ""}`}>
                     {shouldShowSecondaryForecastCard ? (
-                      <article className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
+                      <article className="overflow-hidden rounded-[20px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
                         <div className="mb-4 h-px bg-[linear-gradient(90deg,rgba(14,165,233,0.18),rgba(148,163,184,0))]" />
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-2">
@@ -996,13 +1198,13 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                           {details.consensus.secondaryRecommendation ? ` says ${details.consensus.secondaryRecommendation}` : ""}
                         </p>
                         <div className="mt-3 grid grid-cols-2 gap-2">
-                          <div className="rounded-[20px] border border-white/90 bg-white/80 px-3 py-3 backdrop-blur">
+                          <div className="rounded-[16px] border border-white/90 bg-white/80 px-3 py-3 backdrop-blur">
                             <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Rain chance</p>
                             <p className="mt-1 text-base font-semibold text-slate-950">
                               {details.consensus.secondaryMetrics?.precipitationProbability ?? "--"}%
                             </p>
                           </div>
-                          <div className="rounded-[20px] border border-white/90 bg-white/80 px-3 py-3 backdrop-blur">
+                          <div className="rounded-[16px] border border-white/90 bg-white/80 px-3 py-3 backdrop-blur">
                             <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Rain amount</p>
                             <div className="mt-1">
                               <p className="text-base font-semibold text-slate-950">
@@ -1021,7 +1223,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                       </article>
                     ) : null}
 
-                    <article className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fcfcfb_100%)] px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
+                    <article className="overflow-hidden rounded-[20px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fcfcfb_100%)] px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
                       <div className="mb-4 h-px bg-[linear-gradient(90deg,rgba(245,158,11,0.22),rgba(148,163,184,0))]" />
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2">
@@ -1041,11 +1243,11 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                         {historyGuidance?.detail ?? historySummary(details)}
                       </p>
                       <div className="mt-3 grid grid-cols-2 gap-2">
-                        <div className="rounded-[20px] border border-white/90 bg-white/80 px-3 py-3 backdrop-blur">
+                        <div className="rounded-[16px] border border-white/90 bg-white/80 px-3 py-3 backdrop-blur">
                           <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Same date</p>
                           <p className="mt-1 text-base font-semibold text-slate-950">{details.history.targetDateWetDayChance}% wet days</p>
                         </div>
-                        <div className="rounded-[20px] border border-white/90 bg-white/80 px-3 py-3 backdrop-blur">
+                        <div className="rounded-[16px] border border-white/90 bg-white/80 px-3 py-3 backdrop-blur">
                           <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Avg rain</p>
                           <div className="mt-1">
                             <p className="text-base font-semibold text-slate-950">{details.history.targetDateAvgPrecipitation} mm</p>
@@ -1070,7 +1272,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
 
               <div className="sm:hidden">
                 <Link
-                  href={selectedMountain ? `/mountains/${selectedMountain.slug}?date=${date}` : "/mountains"}
+                  href={selectedMountainHref}
                   className="inline-flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
                 >
                   Open full mountain details
@@ -1078,7 +1280,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
               </div>
             </div>
           ) : (
-            <div className="flex min-h-[420px] items-center justify-center rounded-[28px] border border-dashed border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-6 py-8 text-center shadow-sm">
+            <div className="flex min-h-[420px] items-center justify-center rounded-[20px] border border-dashed border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-6 py-8 text-center shadow-sm">
               <div className="max-w-sm">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Ready to check</p>
                 <p className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">Your weather result will appear here.</p>
@@ -1090,11 +1292,11 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
           )}
         </div>
 
-        <aside className="order-1 border-b border-slate-200/80 bg-[linear-gradient(180deg,#f8fbff_0%,#f1f8f5_100%)] p-4 sm:p-5 xl:order-2 xl:border-b-0 xl:border-l">
+        <aside className="order-1 border-b border-slate-200/80 bg-[linear-gradient(180deg,#fbfdff_0%,#f6f8fb_100%)] p-4 sm:p-5 xl:order-2 xl:border-b-0 xl:border-l">
           <div className="space-y-3">
-            <section className="relative overflow-hidden rounded-[30px] border border-sky-100 bg-[radial-gradient(circle_at_top_left,rgba(186,230,253,0.35),transparent_36%),linear-gradient(160deg,#ffffff_0%,#f7fbff_52%,#eef9f3_100%)] p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-              <div className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full bg-sky-100/70 blur-2xl" aria-hidden="true" />
-              <div className="pointer-events-none absolute -bottom-10 left-6 h-24 w-24 rounded-full bg-emerald-100/70 blur-2xl" aria-hidden="true" />
+            <section className="relative overflow-hidden rounded-[22px] border border-slate-200 bg-[linear-gradient(160deg,#ffffff_0%,#f7fafc_100%)] p-4 shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
+              <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-sky-100/50 blur-2xl" aria-hidden="true" />
+              <div className="pointer-events-none absolute -bottom-8 left-6 h-20 w-20 rounded-full bg-slate-100/70 blur-2xl" aria-hidden="true" />
 
               <div className="relative z-10">
                 <div className="flex items-start justify-between gap-3">
@@ -1104,20 +1306,20 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                   </div>
                   <Link
                     href="/mountains"
-                    className="inline-flex shrink-0 rounded-full border border-white/80 bg-white/80 px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:bg-white"
+                    className="inline-flex shrink-0 rounded-[14px] border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                   >
                     Browse all
                   </Link>
                 </div>
 
-                <div className="mt-4 rounded-[26px] border border-white/80 bg-white/75 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_14px_24px_rgba(148,163,184,0.12)] backdrop-blur">
+                <div className="mt-4 rounded-[18px] border border-slate-200 bg-white p-3 shadow-[0_10px_22px_rgba(15,23,42,0.05)]">
                   <div className="flex items-center justify-between gap-3 px-1">
                     <div>
                       <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">Mountain finder</p>
                       <p className="mt-1 text-sm font-semibold text-slate-950">{selectedMountain ? selectedMountain.province : "Start with your next hike"}</p>
                     </div>
-                    <span className="rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-semibold text-sky-800">
-                      Ready
+                    <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-800">
+                      {hasCompleteSelection ? "Ready" : "Set up"}
                     </span>
                   </div>
 
@@ -1163,10 +1365,10 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                       )}
                       classNames={{
                         control: (state) =>
-                          `touch-manipulation min-h-[60px] rounded-[20px] border bg-white px-3 text-sm text-slate-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_10px_22px_rgba(148,163,184,0.16)] transition ${
-                            state.isFocused ? "border-sky-300 ring-2 ring-sky-200" : "border-sky-100"
+                          `touch-manipulation min-h-[54px] rounded-[16px] border bg-white px-3 text-sm text-slate-900 shadow-[0_8px_18px_rgba(15,23,42,0.05)] transition ${
+                            state.isFocused ? "border-sky-300 ring-2 ring-sky-200" : "border-slate-200"
                           }`,
-                        valueContainer: () => "gap-2 py-2",
+                        valueContainer: () => "gap-2 py-1.5",
                         singleValue: () => "text-sm font-semibold text-slate-900",
                         placeholder: () => "text-sm text-slate-400",
                         input: () => "text-sm text-slate-900",
@@ -1174,10 +1376,10 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                         indicatorSeparator: () => "hidden",
                         dropdownIndicator: () => "text-slate-400 hover:text-slate-600",
                         menu: () =>
-                          "z-30 mt-2 max-h-72 overflow-hidden rounded-[20px] border border-white/80 bg-white/95 p-2 shadow-[0_16px_30px_rgba(148,163,184,0.2)] backdrop-blur",
+                          "z-30 mt-2 max-h-72 overflow-hidden rounded-[16px] border border-slate-200 bg-white p-2 shadow-[0_16px_30px_rgba(15,23,42,0.10)]",
                         menuList: () => "max-h-64 space-y-1 overflow-y-auto overscroll-contain",
                         option: (state) =>
-                          `cursor-pointer rounded-2xl px-3 py-2.5 transition ${
+                          `cursor-pointer rounded-[14px] px-3 py-2.5 transition ${
                             state.isSelected
                               ? "bg-sky-100 text-slate-900"
                               : state.isFocused
@@ -1198,30 +1400,37 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
               </div>
             </section>
 
-            <section className="rounded-[28px] border border-slate-200 bg-white p-4">
+            <section className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">Pick date</p>
               <input
+                ref={dateInputRef}
                 type="date"
                 min={todayIso}
                 value={date}
                 onChange={(event) => setDate(event.target.value)}
-                className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-900 outline-none ring-sky-300 focus:bg-white focus:ring focus-visible:ring-2"
+                className="mt-3 w-full rounded-[16px] border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-900 outline-none ring-sky-300 focus:bg-white focus:ring focus-visible:ring-2"
               />
-              <div className="mt-3 flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+              <div className="mt-3 flex items-start justify-between gap-3 rounded-[16px] border border-slate-200 bg-slate-50 px-3 py-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Forecast trust</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{selectedReliability.estimatedAccuracy}%</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{selectedReliability ? `${selectedReliability.estimatedAccuracy}%` : "Choose date"}</p>
                 </div>
-                <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${reliabilityTone(selectedReliability.estimatedAccuracy)}`}>
-                  {selectedReliability.label}
-                </span>
+                {selectedReliability ? (
+                  <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${reliabilityTone(selectedReliability.estimatedAccuracy)}`}>
+                    {selectedReliability.label}
+                  </span>
+                ) : (
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                    Required
+                  </span>
+                )}
               </div>
               <p className="mt-2 text-xs leading-5 text-slate-500">{confidenceHint}</p>
               <p className="mt-1 text-xs leading-5 text-slate-400">After 15 days, the app switches from day-level forecast to planning outlook. Beyond 30 days, it leans on the same calendar date and month history from the last 2 years.</p>
             </section>
 
             {selectedMountain ? (
-              <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white">
+              <section className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-[0_10px_22px_rgba(15,23,42,0.05)]">
                 <div className="relative h-36 bg-slate-200">
                   <Image
                     src={selectedMountain.image_url}
@@ -1234,38 +1443,79 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                     className="object-cover"
                     style={{ objectPosition: getMountainImageObjectPosition(selectedMountain.slug) }}
                   />
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.06),rgba(15,23,42,0.68))]" />
+                  <div className="absolute inset-x-4 top-4 flex items-start justify-between gap-2">
+                    <span className="rounded-full border border-white/20 bg-white/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white backdrop-blur-sm">
+                      {selectedMountain.region}
+                    </span>
+                    <span className="rounded-full border border-white/20 bg-white/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white backdrop-blur-sm">
+                      {difficultyBand(selectedMountain.difficulty_score)} · {selectedMountain.difficulty_score}/9
+                    </span>
+                  </div>
+                  <div className="absolute inset-x-4 bottom-4">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/70">{selectedMountain.province}</p>
+                    <p className="mt-1 text-xl font-semibold tracking-tight text-white">{selectedMountain.name}</p>
+                  </div>
                 </div>
                 <div className="p-4">
-                  <p className="text-base font-semibold text-slate-950">{selectedMountain.name}</p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {selectedMountain.province}, {selectedMountain.region}
-                  </p>
-                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-700">{selectedMountain.summary}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-[16px] border border-slate-200 bg-slate-50 px-3 py-3">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">Elevation</p>
+                      <p className="mt-1 text-sm font-semibold tracking-tight text-slate-950">
+                        {typeof selectedMountain.elevation_m === "number" ? `${selectedMountain.elevation_m.toLocaleString()} m` : "Mountain guide"}
+                      </p>
+                    </div>
+                    <div className="rounded-[16px] border border-slate-200 bg-slate-50 px-3 py-3">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">Best window</p>
+                      <p className="mt-1 text-sm font-semibold tracking-tight text-slate-950">{selectedMountainBestMonthsWindow ?? "Check details"}</p>
+                    </div>
                   </div>
-                </section>
+                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-700">{selectedMountain.summary}</p>
+                  <Link
+                    href={selectedMountainHref}
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-900 transition hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2"
+                  >
+                    <span>Open mountain guide</span>
+                    <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M4.5 10h11" />
+                      <path d="m10.5 4 5.5 6-5.5 6" />
+                    </svg>
+                  </Link>
+                </div>
+              </section>
             ) : null}
 
-            <div className="sticky bottom-3 z-20 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur xl:static xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none">
+            <div className="sticky bottom-3 z-20 rounded-[18px] border border-slate-200 bg-white/95 p-2 shadow-[0_12px_28px_rgba(15,23,42,0.10)] backdrop-blur xl:static xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none">
               <button
                 type="button"
                 onClick={onCheck}
-                disabled={loading || !selectedMountain}
-                className="w-full rounded-2xl bg-slate-950 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2"
+                disabled={loading}
+                className={`w-full rounded-[16px] px-4 py-3.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 disabled:opacity-60 ${
+                  hasCompleteSelection
+                    ? "bg-slate-950 text-white hover:bg-slate-800"
+                    : "border border-slate-200 bg-[linear-gradient(135deg,#fffdf8_0%,#ffffff_100%)] text-slate-950 hover:border-slate-300 hover:bg-white"
+                }`}
               >
                 <span className="flex items-center justify-center gap-2">
                   {loading ? (
                     <span className="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" />
                   ) : (
-                    <span className="text-base leading-none" aria-hidden="true">↑</span>
+                    <span className="text-base leading-none" aria-hidden="true">{hasCompleteSelection ? "↑" : "•"}</span>
                   )}
                   <span>{loading ? "Checking hiking weather..." : "Check hiking weather"}</span>
                 </span>
               </button>
-                {!loading && selectedMountain ? (
-                  <p className="mt-2 text-center text-[11px] text-slate-500">
-                    Checks {selectedMountain.name} for {formatReadableDate(date)}
-                  </p>
-                ) : null}
+              {!loading ? (
+                <p className="mt-2 text-center text-[11px] text-slate-500">
+                  {hasCompleteSelection && selectedMountain
+                    ? `Checks ${selectedMountain.name} for ${formatReadableDate(date)}`
+                    : !selectedMountain && !hasSelectedDate
+                      ? "Choose a mountain and date, then check the forecast."
+                      : !selectedMountain
+                        ? "Choose a mountain to continue."
+                        : "Pick a date to continue."}
+                </p>
+              ) : null}
             </div>
           </div>
         </aside>

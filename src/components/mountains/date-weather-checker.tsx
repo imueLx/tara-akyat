@@ -30,8 +30,6 @@ type GuidanceTone = {
   valueText: string;
 };
 
-const SECONDARY_SOURCE_LABEL = "Another forecast source";
-
 function nextDayISO(): string {
   return formatISODate(addDays(new Date(), 1));
 }

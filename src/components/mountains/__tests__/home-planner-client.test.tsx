@@ -112,13 +112,40 @@ afterEach(() => {
   window.scrollTo = originalScrollTo;
 });
 
+async function selectMountain(name: RegExp | string) {
+  const combobox = screen.getByRole("combobox", { name: "Search mountains" });
+  fireEvent.focus(combobox);
+
+  await waitFor(() => {
+    expect(screen.getByRole("option", { name })).toBeInTheDocument();
+  });
+
+  fireEvent.click(screen.getByRole("option", { name }));
+}
+
 describe("HomePlannerClient", () => {
+  it("starts without a selected mountain or date and opens a guidance popup when checking early", async () => {
+    render(<HomePlannerClient mountains={mountains} />);
+
+    const combobox = screen.getByRole("combobox", { name: "Search mountains" });
+    expect(combobox).toHaveAttribute("aria-haspopup", "true");
+    expect(screen.getByText("Start with your next hike")).toBeInTheDocument();
+    expect(screen.getByText("Date not set")).toBeInTheDocument();
+    expect(screen.getByText("Choose date")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Open mountain guide/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Check hiking weather/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog", { name: /Choose a mountain and date first/i })).toBeInTheDocument();
+    });
+  });
+
   it("supports combobox semantics and keyboard selection", async () => {
     render(<HomePlannerClient mountains={mountains} />);
 
     const combobox = screen.getByRole("combobox", { name: "Search mountains" });
     expect(combobox).toHaveAttribute("aria-haspopup", "true");
-    expect(screen.getByText("Mt. Ulap • Benguet")).toBeInTheDocument();
 
     fireEvent.focus(combobox);
     fireEvent.change(combobox, { target: { value: "apo" } });
@@ -155,7 +182,7 @@ describe("HomePlannerClient", () => {
     render(<HomePlannerClient mountains={mountains} />);
 
     const combobox = screen.getByRole("combobox", { name: "Search mountains" });
-    expect(screen.getByText("Mt. Ulap • Benguet")).toBeInTheDocument();
+    expect(screen.getByText("Start with your next hike")).toBeInTheDocument();
 
     fireEvent.focus(combobox);
 
@@ -194,6 +221,7 @@ describe("HomePlannerClient", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify(climateDetailsPayload), { status: 200 }));
 
     render(<HomePlannerClient mountains={mountains} initialDate="2026-04-30" />);
+    await selectMountain(/Mt\. Ulap/i);
     fireEvent.click(screen.getByRole("button", { name: /Check hiking weather/i }));
 
     await waitFor(() => {
@@ -221,6 +249,7 @@ describe("HomePlannerClient", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify(climateDetailsPayload), { status: 200 }));
 
     render(<HomePlannerClient mountains={mountains} initialDate="2026-04-30" />);
+    await selectMountain(/Mt\. Ulap/i);
     fireEvent.click(screen.getByRole("button", { name: /Check hiking weather/i }));
 
     await waitFor(() => {
