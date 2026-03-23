@@ -193,7 +193,7 @@ function MountainCard({ mountain, eagerLoad = false }: { mountain: Mountain; eag
           fill
           className="object-cover transition duration-700 group-hover:scale-[1.04]"
           sizes="(max-width: 768px) 100vw, 33vw"
-          loading={shouldEagerLoad ? "eager" : "lazy"}
+          loading={shouldEagerLoad ? "eager" : undefined}
           fetchPriority={eagerLoad ? "high" : "auto"}
           quality={70}
           style={{ objectPosition: getMountainImageObjectPosition(mountain.slug) }}
@@ -1005,7 +1005,7 @@ export function MountainListClient({ mountains, regions }: Props) {
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {mountainsByBand.map((mountain, index) => (
-                      <MountainCard key={mountain.id} mountain={mountain} eagerLoad={bandIndex === 0 && index < 3} />
+                      <MountainCard key={mountain.id} mountain={mountain} eagerLoad={bandIndex === 0 && index === 0} />
                     ))}
                   </div>
                 </section>
@@ -1015,7 +1015,7 @@ export function MountainListClient({ mountains, regions }: Props) {
           <section className="scroll-mt-44 md:scroll-mt-32">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {sorted.map((mountain, index) => (
-                <MountainCard key={mountain.id} mountain={mountain} eagerLoad={index < 3} />
+                <MountainCard key={mountain.id} mountain={mountain} eagerLoad={index === 0} />
               ))}
             </div>
           </section>

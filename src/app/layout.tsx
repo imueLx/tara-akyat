@@ -3,6 +3,7 @@ import { Chivo, JetBrains_Mono } from "next/font/google";
 
 import { AppTopNav } from "@/components/app-top-nav";
 import { DEFAULT_OG_IMAGE_PATH, SITE_DESCRIPTION, SITE_LOCALE, SITE_NAME, getBaseUrl } from "@/lib/seo";
+import { getThemeBootstrapScript } from "@/lib/theme";
 
 import "./globals.css";
 
@@ -68,8 +69,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en-PH" data-scroll-behavior="smooth" className={`${chivo.variable} ${jetbrainsMono.variable}`}>
-      <body className="min-h-screen bg-slate-100 text-slate-900">
+    <html
+      lang="en-PH"
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+      className={`${chivo.variable} ${jetbrainsMono.variable}`}
+    >
+      <body className="min-h-screen bg-background text-foreground">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: getThemeBootstrapScript(),
+          }}
+        />
         <AppTopNav />
         {children}
       </body>

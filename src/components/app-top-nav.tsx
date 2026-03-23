@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { ThemeToggle } from "@/components/theme-toggle";
+
 const navItems = [
   { href: "/", label: "Check weather" },
   { href: "/mountains", label: "Browse mountains" },
@@ -29,27 +31,30 @@ export function AppTopNav() {
           </p>
         </Link>
 
-        <nav
-          aria-label="Primary"
-          className="grid w-full grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1 md:w-auto md:min-w-[250px]"
-        >
-          {navItems.map((item) => {
-            const isActive =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
+        <div className="flex w-full items-center gap-2 md:w-auto">
+          <nav
+            aria-label="Primary"
+            className="grid min-w-0 flex-1 grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1 md:w-auto md:min-w-[250px] md:flex-none"
+          >
+            {navItems.map((item) => {
+              const isActive =
+                item.href === "/"
+                  ? pathname === "/"
+                  : pathname.startsWith(item.href);
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`rounded-xl px-3 py-2.5 text-center text-xs font-semibold transition sm:text-sm ${navTone(isActive)}`}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`rounded-xl px-3 py-2.5 text-center text-xs font-semibold transition sm:text-sm ${navTone(isActive)}`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );

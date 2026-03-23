@@ -114,7 +114,6 @@ export function MountainPhotoLightbox({ name, imageUrl, imageSourceUrl, objectPo
           fill
           className="object-cover transition duration-300 group-hover:scale-[1.02]"
           sizes="(max-width: 768px) 100vw, 960px"
-          preload
           quality={75}
           style={{ objectPosition }}
         />
@@ -156,7 +155,7 @@ export function MountainPhotoLightbox({ name, imageUrl, imageSourceUrl, objectPo
                 fill
                 className="object-contain"
                 sizes="100vw"
-                quality={85}
+                quality={80}
               />
             </div>
 

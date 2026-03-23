@@ -4,7 +4,7 @@ export const SITE_NAME = "Tara Akyat";
 export const SITE_ALTERNATE_NAME = "Tara Akyat PH";
 export const SITE_TAGLINE = "Philippines hiking weather planner and mountain guides";
 export const SITE_DESCRIPTION = "Plan safer hikes in the Philippines with date-based weather checks, forecast reliability, and mountain guides.";
-export const DEFAULT_OG_IMAGE_PATH = "/mountains/verified/mt-pulag.jpg";
+export const DEFAULT_OG_IMAGE_PATH = "/mountains/verified/mt-pulag.webp";
 export const PRODUCTION_SITE_URL = "https://tara-akyat.vercel.app";
 export const SITE_LOGO_PATH = "/brand/tara-akyat-mark.svg";
 export const SITE_LOCALE = "en_PH";
@@ -81,3 +81,4 @@ export function getMountainMetaDescription(mountain: Mountain): string {
 
   return `${mountain.name} hiking guide for ${formatMountainLocation(mountain)}. Check elevation, ${mountain.difficulty.toLowerCase()} difficulty (${mountain.difficulty_score}/9), weather planning, and trail notes before your hike.${bestMonthsSnippet}`;
 }
+

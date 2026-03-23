@@ -1437,8 +1437,6 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                     alt={selectedMountain.name}
                     fill
                     sizes="(max-width: 1280px) 100vw, 380px"
-                    loading="eager"
-                    fetchPriority="high"
                     quality={70}
                     className="object-cover"
                     style={{ objectPosition: getMountainImageObjectPosition(selectedMountain.slug) }}
