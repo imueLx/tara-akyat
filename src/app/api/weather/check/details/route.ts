@@ -47,7 +47,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const response = NextResponse.json(result, {
       headers: {
         ...createWeatherResponseHeaders(
-          "public, s-maxage=900, stale-while-revalidate=300",
+          "public, s-maxage=3600, stale-while-revalidate=900",
           getWeatherRouteElapsedMs(startedAtMs),
         ),
         ...createRateLimitHeaders(rateLimit),

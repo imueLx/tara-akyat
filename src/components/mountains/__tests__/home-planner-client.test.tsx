@@ -200,12 +200,12 @@ describe("HomePlannerClient", () => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /More details/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("2-year history")).toBeInTheDocument();
+      expect(screen.getByText("Recent history")).toBeInTheDocument();
       expect(screen.getAllByText("42% wet days").length).toBeGreaterThan(0);
-      expect(screen.getByText(/Same date lately/)).toBeInTheDocument();
+      expect(screen.getByText(/^Same date$/)).toBeInTheDocument();
       expect(screen.queryByText("Another forecast source")).not.toBeInTheDocument();
       expect(screen.queryByText("Day-level rain forecast is unavailable for this date range.")).not.toBeInTheDocument();
     });
@@ -227,14 +227,14 @@ describe("HomePlannerClient", () => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /More details/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
     await waitFor(() => {
-      expect(screen.getByText("2-year history")).toBeInTheDocument();
+      expect(screen.getByText("Recent history")).toBeInTheDocument();
       expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /More details/i }));
-    fireEvent.click(screen.getByRole("button", { name: /More details/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
 
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledTimes(2);

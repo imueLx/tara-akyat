@@ -126,7 +126,7 @@ describe("DateWeatherChecker", () => {
       expect(screen.getAllByText(/How reliable/).length).toBeGreaterThan(0);
       expect(screen.getByText(/No rain expected/)).toBeInTheDocument();
       expect(screen.getByText("None")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /More details/i })).toHaveAttribute("aria-expanded", "false");
+      expect(screen.getByRole("button", { name: /Cross-checks/i })).toHaveAttribute("aria-expanded", "false");
       expect(screen.queryByText(/Usually drier|Mixed month|Historically wet/)).not.toBeInTheDocument();
     });
   });
@@ -213,20 +213,20 @@ describe("DateWeatherChecker", () => {
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole("button", { name: /More details/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("2-year history")).toBeInTheDocument();
+      expect(screen.getByText("Recent history")).toBeInTheDocument();
       expect(screen.getAllByText("42% wet days").length).toBeGreaterThan(0);
-      expect(screen.getByText(/Same date lately/)).toBeInTheDocument();
+      expect(screen.getByText(/^Same date$/)).toBeInTheDocument();
       expect(screen.queryByText("Another forecast source")).not.toBeInTheDocument();
     });
 
     expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(fetchSpy).toHaveBeenLastCalledWith("/api/weather/check/details?lat=14.6&lon=121.1&date=2026-04-30");
 
-    fireEvent.click(screen.getByRole("button", { name: /More details/i }));
-    fireEvent.click(screen.getByRole("button", { name: /More details/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
 
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledTimes(2);

@@ -130,29 +130,51 @@ export default async function MountainPage({ params, searchParams }: Props) {
         </Link>
       </div>
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="relative mb-4 h-52 w-full overflow-hidden rounded-2xl sm:h-64">
-          <Image
-            src={mountain.image_url}
-            alt={mountain.name}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 960px"
-            preload
-            quality={75}
-            style={{ objectPosition: getMountainImageObjectPosition(mountain.slug) }}
-          />
-        </div>
         {mountain.image_source_url ? (
-          <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-600">
-            <p className="font-medium text-slate-900">
+          <a
+            href={mountain.image_source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Open source photo for ${mountain.name}`}
+            className="group relative mb-4 block h-52 w-full overflow-hidden rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 sm:h-64"
+          >
+            <Image
+              src={mountain.image_url}
+              alt={mountain.name}
+              fill
+              className="object-cover transition duration-300 group-hover:scale-[1.02]"
+              sizes="(max-width: 768px) 100vw, 960px"
+              preload
+              quality={75}
+              style={{ objectPosition: getMountainImageObjectPosition(mountain.slug) }}
+            />
+            <div className="pointer-events-none absolute inset-0 bg-slate-950/0 transition duration-300 group-hover:bg-slate-950/8" />
+          </a>
+        ) : (
+          <div className="relative mb-4 h-52 w-full overflow-hidden rounded-2xl sm:h-64">
+            <Image
+              src={mountain.image_url}
+              alt={mountain.name}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 960px"
+              preload
+              quality={75}
+              style={{ objectPosition: getMountainImageObjectPosition(mountain.slug) }}
+            />
+          </div>
+        )}
+        {mountain.image_source_url ? (
+          <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-[11px] leading-5 text-slate-600">
+            <p className="font-medium text-[11px] text-slate-900">
               Photo credit: {mountain.image_credit ?? "Wikimedia Commons contributor"}
             </p>
-            {mountain.image_license ? <p className="mt-1">License: {mountain.image_license}</p> : null}
+            {mountain.image_license ? <p className="mt-0.5">License: {mountain.image_license}</p> : null}
             <a
               href={mountain.image_source_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-block font-medium text-sky-700 hover:text-sky-800"
+              className="mt-1.5 inline-block text-[11px] font-medium text-sky-700 hover:text-sky-800"
             >
               Open image source
             </a>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { RecommendationPill } from "@/components/mountains/recommendation-pill";
 import { addDays, differenceInDays, formatISODate, isValidDate } from "@/lib/date";
+import { getWeatherClientCache, setWeatherClientCache } from "@/lib/weather/client-cache";
 import { getSelectedReliability } from "@/lib/weather/reliability";
 import type { WeatherCheckDetails, WeatherCheckResult } from "@/types/hiking";
 
@@ -134,14 +135,14 @@ function reliabilityPlainLanguage(result: WeatherCheckResult): string {
 
 function historySummary(details: WeatherCheckDetails): string {
   if (details.history.targetMonthWetDayChance >= 55) {
-    return "This month has often been wet lately, but that does not mean your date will rain.";
+    return "This month has been wet more often lately.";
   }
 
   if (details.history.targetMonthWetDayChance >= 35) {
-    return "This month has had mixed wet and dry patterns lately.";
+    return "This month has had mixed wet and dry days lately.";
   }
 
-  return "This month has generally been drier lately.";
+  return "This month has been mostly drier lately.";
 }
 
 function compactReasons(result: WeatherCheckResult): string[] {
@@ -218,6 +219,22 @@ function rainAmountTone(value: number): MetricTone {
   };
 }
 
+function rainAmountLabel(value: number): string {
+  if (value <= 0) {
+    return "None";
+  }
+
+  if (value >= 8) {
+    return "Heavy";
+  }
+
+  if (value >= 2) {
+    return "Moderate";
+  }
+
+  return "Light";
+}
+
 function windTone(value: number): MetricTone {
   if (value >= 35) {
     return {
@@ -292,9 +309,9 @@ function historyContextTone(wetDayChance: number): GuidanceTone {
   if (wetDayChance >= 55) {
     return {
       containerClassName: "border-sky-200 bg-sky-50",
-      chipClassName: "bg-sky-100 text-sky-800",
-      label: "Historically wet",
-      detail: "Recent history only. Not a live forecast.",
+      chipClassName: "border border-sky-100 bg-sky-50 text-sky-700",
+      label: "Wet",
+      detail: "Past pattern only.",
       valueText: `${wetDayChance}% wet days`,
     };
   }
@@ -302,18 +319,18 @@ function historyContextTone(wetDayChance: number): GuidanceTone {
   if (wetDayChance >= 35) {
     return {
       containerClassName: "border-amber-200 bg-amber-50",
-      chipClassName: "bg-amber-100 text-amber-800",
-      label: "Mixed month",
-      detail: "Recent history only. Not a live forecast.",
+      chipClassName: "border border-amber-100 bg-amber-50 text-amber-700",
+      label: "Mixed",
+      detail: "Past pattern only.",
       valueText: `${wetDayChance}% wet days`,
     };
   }
 
   return {
     containerClassName: "border-emerald-200 bg-emerald-50",
-    chipClassName: "bg-emerald-100 text-emerald-800",
-    label: "Usually drier",
-    detail: "Recent history only. Not a live forecast.",
+    chipClassName: "border border-emerald-100 bg-emerald-50 text-emerald-700",
+    label: "Drier",
+    detail: "Past pattern only.",
     valueText: `${wetDayChance}% wet days`,
   };
 }
@@ -337,9 +354,9 @@ function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
   if (rainChance >= 70 || rainMm >= 8) {
     return {
       containerClassName: "border-sky-200 bg-sky-50",
-      chipClassName: "bg-sky-100 text-sky-800",
-      label: "Wet signal",
-      detail: `${SECONDARY_SOURCE_LABEL} cross-check for the same selected date.`,
+      chipClassName: "border border-sky-100 bg-sky-50 text-sky-700",
+      label: "Wet",
+      detail: "Second source for this date.",
       valueText: `${rainChance}% chance, ${rainMm} mm`,
     };
   }
@@ -347,18 +364,18 @@ function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
   if (rainChance >= 35 || rainMm >= 2) {
     return {
       containerClassName: "border-amber-200 bg-amber-50",
-      chipClassName: "bg-amber-100 text-amber-800",
-      label: "Mixed signal",
-      detail: `${SECONDARY_SOURCE_LABEL} cross-check for the same selected date.`,
+      chipClassName: "border border-amber-100 bg-amber-50 text-amber-700",
+      label: "Mixed",
+      detail: "Second source for this date.",
       valueText: `${rainChance}% chance, ${rainMm} mm`,
     };
   }
 
   return {
     containerClassName: "border-emerald-200 bg-emerald-50",
-    chipClassName: "bg-emerald-100 text-emerald-800",
-    label: "Dry signal",
-    detail: `${SECONDARY_SOURCE_LABEL} cross-check for the same selected date.`,
+    chipClassName: "border border-emerald-100 bg-emerald-50 text-emerald-700",
+    label: "Dry",
+    detail: "Second source for this date.",
     valueText: `${rainChance}% chance, ${rainMm} mm`,
   };
 }
@@ -498,6 +515,18 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
       setShowMoreDetails(false);
 
       try {
+        const cacheParts = [lat, lon, dateToCheck];
+        const cachedResult = getWeatherClientCache<WeatherCheckResult>("check", cacheParts);
+
+        if (cachedResult) {
+          setResult(cachedResult);
+          const decisionLabel = cachedResult.recommendation ?? "Planning outlook";
+          setAnnounceMessage(
+            `${decisionLabel}. Forecast trust ${cachedResult.reliability.estimatedAccuracy} percent for ${cachedResult.date}.`,
+          );
+          return;
+        }
+
         const response = await fetch(`/api/weather/check?lat=${lat}&lon=${lon}&date=${dateToCheck}`);
         const data = (await response.json()) as WeatherCheckResult | { error: string };
 
@@ -507,6 +536,7 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
         }
 
         const parsed = data as WeatherCheckResult;
+        setWeatherClientCache("check", cacheParts, parsed);
         setResult(parsed);
         const decisionLabel = parsed.recommendation ?? "Planning outlook";
         setAnnounceMessage(
@@ -533,6 +563,14 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
     setDetailsError(null);
 
     try {
+      const cacheParts = [lat, lon, result.date];
+      const cachedDetails = getWeatherClientCache<WeatherCheckDetails>("details", cacheParts);
+
+      if (cachedDetails) {
+        setDetails(cachedDetails);
+        return;
+      }
+
       const response = await fetch(`/api/weather/check/details?lat=${lat}&lon=${lon}&date=${result.date}`);
       const data = (await response.json()) as WeatherCheckDetails | { error: string };
 
@@ -541,7 +579,9 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
         throw new Error(message);
       }
 
-      setDetails(data as WeatherCheckDetails);
+      const parsed = data as WeatherCheckDetails;
+      setWeatherClientCache("details", cacheParts, parsed);
+      setDetails(parsed);
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Unable to load more details right now.";
       setDetailsError(message);
@@ -728,8 +768,10 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
                   </div>
                   <div className="rounded-xl bg-white/70 px-3 py-2.5">
                     <p className="text-[11px] uppercase tracking-[0.12em] text-amber-700">Typical daily rain</p>
-                    <p className="mt-1 text-base font-semibold text-amber-950">{result.climate?.avgPrecipitation ?? 0} mm</p>
-                    <p className="mt-1 text-[11px] leading-5 text-amber-800">Month-based planning outlook. Open More details for recent-history breakdown.</p>
+                    <p className="mt-1 text-base font-semibold text-amber-950">
+                      {result.climate?.avgPrecipitation ?? 0} mm • {rainAmountLabel(result.climate?.avgPrecipitation ?? 0)}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-5 text-amber-800">Month-based planning outlook. Open Cross-checks for the recent-history breakdown.</p>
                   </div>
                 </div>
               </section>
@@ -748,18 +790,27 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
               <p className="mt-1 text-xs leading-5 text-slate-600">{reliabilityPlainLanguage(result)}</p>
             </article>
 
-            <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+            <section className="rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-3 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
               <button
                 type="button"
                 onClick={onToggleMoreDetails}
                 aria-expanded={showMoreDetails}
                 className="flex w-full items-center justify-between gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2"
               >
-                <div>
-                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">More details</p>
-                  <p className="mt-1 text-xs text-slate-600">Forecast cross-check and 2-year history</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200/80 bg-white text-slate-700 shadow-[0_6px_18px_rgba(15,23,42,0.06)]">
+                      <svg viewBox="0 0 20 20" className="h-4 w-4 fill-none stroke-current" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M3.5 16.5h13" />
+                        <path d="M6 13V9.5M10 13V6.5M14 13V8" />
+                      </svg>
+                    </span>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Cross-checks</p>
+                  </div>
+                  <p className="mt-2 text-sm font-semibold text-slate-950">Second forecast and recent history</p>
+                  <p className="mt-1 text-xs text-slate-600">A second weather check plus recent rain patterns.</p>
                 </div>
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm">
                   {showMoreDetails ? "Hide" : "Show"}
                 </span>
               </button>
@@ -771,9 +822,10 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
               ) : details ? (
                 <div className={`mt-3 grid grid-cols-1 gap-2 ${shouldShowSecondaryForecastCard ? "sm:grid-cols-2" : ""}`}>
                   {shouldShowSecondaryForecastCard ? (
-                    <article className={`rounded-2xl border px-3 py-3 ${secondaryGuidance?.containerClassName ?? "border-slate-200 bg-white"}`}>
+                    <article className="overflow-hidden rounded-[22px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-3 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
+                      <div className="mb-3 h-px bg-[linear-gradient(90deg,rgba(14,165,233,0.18),rgba(148,163,184,0))]" />
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-semibold text-slate-900">Another forecast source</p>
+                        <p className="text-xs font-semibold text-slate-900">Second source</p>
                         <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${secondaryGuidance?.chipClassName ?? "bg-slate-100 text-slate-700"}`}>
                           {secondaryGuidance?.label ?? "No data"}
                         </span>
@@ -782,32 +834,57 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
                         Secondary check
                         {details.consensus.secondaryRecommendation ? ` says ${details.consensus.secondaryRecommendation}` : ""}
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">{secondaryGuidance?.valueText ?? "Unavailable"}</p>
-                      <p className="mt-1 break-words text-xs leading-5 text-slate-700">{secondaryGuidance?.detail ?? "Secondary forecast guidance is unavailable right now."}</p>
-                      <p className="mt-1 text-[11px] leading-5 text-slate-500">
-                        Primary forecast above is from the main forecast source. This card checks the same date with another forecast source.
-                      </p>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <div className="rounded-xl border border-white/90 bg-white/80 px-3 py-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Rain chance</p>
+                          <p className="mt-1 text-sm font-semibold text-slate-900">
+                            {details.consensus.secondaryMetrics?.precipitationProbability ?? "--"}%
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/90 bg-white/80 px-3 py-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Rain amount</p>
+                          <div className="mt-1">
+                            <p className="text-sm font-semibold text-slate-900">
+                              {details.consensus.secondaryMetrics?.precipitationSum ?? "--"}{typeof details.consensus.secondaryMetrics?.precipitationSum === "number" ? " mm" : ""}
+                            </p>
+                            {typeof details.consensus.secondaryMetrics?.precipitationSum === "number" ? (
+                              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">
+                                {rainAmountLabel(details.consensus.secondaryMetrics.precipitationSum)}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-sm font-semibold text-slate-900">{secondaryGuidance?.valueText ?? "Unavailable"}</p>
+                      <p className="mt-1 break-words text-xs leading-5 text-slate-700">{secondaryGuidance?.detail ?? "Second source is unavailable right now."}</p>
                     </article>
                   ) : null}
 
-                  <article className={`rounded-2xl border px-3 py-3 ${historyGuidance?.containerClassName ?? "border-slate-200 bg-white"}`}>
+                  <article className="overflow-hidden rounded-[22px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fcfcfb_100%)] px-3 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
+                    <div className="mb-3 h-px bg-[linear-gradient(90deg,rgba(245,158,11,0.22),rgba(148,163,184,0))]" />
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-slate-900">2-year history</p>
-                      <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${historyGuidance?.chipClassName ?? "bg-slate-100 text-slate-700"}`}>
+                      <p className="text-xs font-semibold text-slate-900">Recent history</p>
+                      <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700">
                         {historyGuidance?.label ?? "No data"}
                       </span>
                     </div>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{historyGuidance?.valueText ?? "Unavailable"}</p>
                     <p className="mt-1 break-words text-xs leading-5 text-slate-700">{historyGuidance?.detail ?? historySummary(details)}</p>
-                    <div className="mt-2 rounded-xl border border-white/80 bg-white/70 px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Same date lately</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">
-                        {details.history.targetDateWetDayChance}% wet days, around {details.history.targetDateAvgPrecipitation} mm
-                      </p>
-                      <p className="mt-1 text-[11px] leading-5 text-slate-600">
-                        History only, not a live forecast.
-                      </p>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <div className="rounded-xl border border-white/90 bg-white/80 px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Same date</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">{details.history.targetDateWetDayChance}% wet days</p>
+                      </div>
+                      <div className="rounded-xl border border-white/90 bg-white/80 px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Avg rain</p>
+                        <div className="mt-1">
+                          <p className="text-sm font-semibold text-slate-900">{details.history.targetDateAvgPrecipitation} mm</p>
+                          <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">
+                            {rainAmountLabel(details.history.targetDateAvgPrecipitation)}
+                          </p>
+                        </div>
+                      </div>
                     </div>
+                    <p className="mt-2 text-base font-semibold text-slate-900">{historyGuidance?.valueText ?? "Unavailable"}</p>
                     <p className="mt-1 break-words text-[11px] leading-5 text-slate-500">{historySummary(details)}</p>
                   </article>
                 </div>

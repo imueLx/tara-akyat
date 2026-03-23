@@ -11,6 +11,7 @@ import { RecommendationPill } from "@/components/mountains/recommendation-pill";
 import { getMountainVerificationSummary } from "@/lib/content-quality";
 import { addDays, differenceInDays, formatISODate, isValidDate } from "@/lib/date";
 import { getMountainImageObjectPosition } from "@/lib/mountain-image";
+import { getWeatherClientCache, setWeatherClientCache } from "@/lib/weather/client-cache";
 import { getSelectedReliability } from "@/lib/weather/reliability";
 import type { WeatherCheckDetails, WeatherCheckResult } from "@/types/hiking";
 
@@ -327,6 +328,22 @@ function rainAmountTone(value: number): MetricTone {
   };
 }
 
+function rainAmountLabel(value: number): string {
+  if (value <= 0) {
+    return "None";
+  }
+
+  if (value >= 8) {
+    return "Heavy";
+  }
+
+  if (value >= 2) {
+    return "Moderate";
+  }
+
+  return "Light";
+}
+
 function windTone(value: number): MetricTone {
   if (value >= 35) {
     return {
@@ -406,23 +423,23 @@ function feelsLikeTone(value: number): MetricTone {
 
 function historySummary(details: WeatherCheckDetails): string {
   if (details.history.targetMonthWetDayChance >= 55) {
-    return "This month has often been wet lately, but that does not mean your date will rain.";
+    return "This month has been wet more often lately.";
   }
 
   if (details.history.targetMonthWetDayChance >= 35) {
-    return "This month has had mixed wet and dry patterns lately.";
+    return "This month has had mixed wet and dry days lately.";
   }
 
-  return "This month has generally been drier lately.";
+  return "This month has been mostly drier lately.";
 }
 
 function historyContextTone(wetDayChance: number): GuidanceTone {
   if (wetDayChance >= 55) {
     return {
       containerClassName: "border-sky-200 bg-sky-50",
-      chipClassName: "bg-sky-100 text-sky-800",
-      label: "Historically wet",
-      detail: "Recent history only. Not a live forecast.",
+      chipClassName: "border border-sky-100 bg-sky-50 text-sky-700",
+      label: "Wet",
+      detail: "Past pattern only.",
       valueText: `${wetDayChance}% wet days`,
     };
   }
@@ -430,18 +447,18 @@ function historyContextTone(wetDayChance: number): GuidanceTone {
   if (wetDayChance >= 35) {
     return {
       containerClassName: "border-amber-200 bg-amber-50",
-      chipClassName: "bg-amber-100 text-amber-800",
-      label: "Mixed month",
-      detail: "Recent history only. Not a live forecast.",
+      chipClassName: "border border-amber-100 bg-amber-50 text-amber-700",
+      label: "Mixed",
+      detail: "Past pattern only.",
       valueText: `${wetDayChance}% wet days`,
     };
   }
 
   return {
     containerClassName: "border-emerald-200 bg-emerald-50",
-    chipClassName: "bg-emerald-100 text-emerald-800",
-    label: "Usually drier",
-    detail: "Recent history only. Not a live forecast.",
+    chipClassName: "border border-emerald-100 bg-emerald-50 text-emerald-700",
+    label: "Drier",
+    detail: "Past pattern only.",
     valueText: `${wetDayChance}% wet days`,
   };
 }
@@ -465,9 +482,9 @@ function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
   if (rainChance >= 70 || rainMm >= 8) {
     return {
       containerClassName: "border-sky-200 bg-sky-50",
-      chipClassName: "bg-sky-100 text-sky-800",
-      label: "Wet signal",
-      detail: `${SECONDARY_SOURCE_LABEL} cross-check for the same selected date.`,
+      chipClassName: "border border-sky-100 bg-sky-50 text-sky-700",
+      label: "Wet",
+      detail: "Second source for this date.",
       valueText: `${rainChance}% chance, ${rainMm} mm`,
     };
   }
@@ -475,18 +492,18 @@ function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
   if (rainChance >= 35 || rainMm >= 2) {
     return {
       containerClassName: "border-amber-200 bg-amber-50",
-      chipClassName: "bg-amber-100 text-amber-800",
-      label: "Mixed signal",
-      detail: `${SECONDARY_SOURCE_LABEL} cross-check for the same selected date.`,
+      chipClassName: "border border-amber-100 bg-amber-50 text-amber-700",
+      label: "Mixed",
+      detail: "Second source for this date.",
       valueText: `${rainChance}% chance, ${rainMm} mm`,
     };
   }
 
   return {
     containerClassName: "border-emerald-200 bg-emerald-50",
-    chipClassName: "bg-emerald-100 text-emerald-800",
-    label: "Dry signal",
-    detail: `${SECONDARY_SOURCE_LABEL} cross-check for the same selected date.`,
+    chipClassName: "border border-emerald-100 bg-emerald-50 text-emerald-700",
+    label: "Dry",
+    detail: "Second source for this date.",
     valueText: `${rainChance}% chance, ${rainMm} mm`,
   };
 }
@@ -693,6 +710,21 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
     setShowMoreDetails(false);
 
     try {
+      const cacheParts = [selectedMountain.lat, selectedMountain.lon, date];
+      const cachedResult = getWeatherClientCache<WeatherCheckResult>("check", cacheParts);
+
+      if (cachedResult) {
+        setResult(cachedResult);
+        const verdict = cachedResult.recommendation ?? "Planning outlook";
+        setAnnounceMessage(`${verdict}. Forecast confidence ${cachedResult.reliability.estimatedAccuracy} percent.`);
+        requestAnimationFrame(() => {
+          window.setTimeout(() => {
+            scheduleResultScroll(primaryDecisionRef.current ?? resultsRef.current);
+          }, 120);
+        });
+        return;
+      }
+
       const response = await fetch(`/api/weather/check?lat=${selectedMountain.lat}&lon=${selectedMountain.lon}&date=${date}`);
       const data = (await response.json()) as WeatherCheckResult | { error: string };
 
@@ -701,6 +733,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
       }
 
       const parsed = data as WeatherCheckResult;
+      setWeatherClientCache("check", cacheParts, parsed);
       setResult(parsed);
       const verdict = parsed.recommendation ?? "Planning outlook";
       setAnnounceMessage(`${verdict}. Forecast confidence ${parsed.reliability.estimatedAccuracy} percent.`);
@@ -728,6 +761,14 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
     setDetailsError(null);
 
     try {
+      const cacheParts = [selectedMountain.lat, selectedMountain.lon, result.date];
+      const cachedDetails = getWeatherClientCache<WeatherCheckDetails>("details", cacheParts);
+
+      if (cachedDetails) {
+        setDetails(cachedDetails);
+        return;
+      }
+
       const response = await fetch(`/api/weather/check/details?lat=${selectedMountain.lat}&lon=${selectedMountain.lon}&date=${result.date}`);
       const data = (await response.json()) as WeatherCheckDetails | { error: string };
 
@@ -735,7 +776,9 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
         throw new Error("error" in data ? data.error : "Unable to load more details right now.");
       }
 
-      setDetails(data as WeatherCheckDetails);
+      const parsed = data as WeatherCheckDetails;
+      setWeatherClientCache("details", cacheParts, parsed);
+      setDetails(parsed);
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Unable to load more details right now.";
       setDetailsError(message);
@@ -894,33 +937,33 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                 <p className="mt-2 text-sm leading-6 text-slate-600">{reliabilityMeaning(result.reliability.estimatedAccuracy)}</p>
               </article>
 
-              <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
+              <section className="rounded-[30px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
                 <button
                   type="button"
                   onClick={onToggleMoreDetails}
                   aria-expanded={showMoreDetails}
                   className="flex w-full items-center justify-between gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <SectionIcon>
+                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/80 bg-white text-slate-700 shadow-[0_6px_18px_rgba(15,23,42,0.06)]">
                         <ChartIcon />
-                      </SectionIcon>
-                      <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">More details</p>
+                      </span>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Cross-checks</p>
                     </div>
-                    <p className="mt-1 text-sm font-semibold text-slate-950">Forecast cross-check and 2-year history</p>
-                    <p className="mt-2 text-xs leading-5 text-slate-500">The top card cross-checks another provider when available. The history side is background context, not a live forecast.</p>
+                    <p className="mt-2 text-base font-semibold tracking-tight text-slate-950">Second forecast and recent history</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">A second weather check plus recent rain patterns.</p>
                     {result.mode === "climate" ? (
-                      <p className="mt-2 text-xs leading-5 text-amber-700">
+                      <p className="mt-2 inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">
                         Recommended for this result. This date is outside day-level forecast range.
                       </p>
                     ) : null}
                   </div>
                   <span
-                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${
+                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold shadow-sm transition ${
                       result.mode === "climate"
                         ? "border-amber-200 bg-amber-50 text-amber-800"
-                        : "border-slate-200 bg-slate-50 text-slate-700"
+                        : "border-slate-200 bg-white text-slate-700"
                     }`}
                   >
                     {showMoreDetails ? "Hide" : "Show"}
@@ -934,52 +977,88 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                 ) : details ? (
                   <div className={`mt-4 grid grid-cols-1 gap-3 ${shouldShowSecondaryForecastCard ? "sm:grid-cols-2" : ""}`}>
                     {shouldShowSecondaryForecastCard ? (
-                      <article className={`rounded-[24px] border px-4 py-4 ${secondaryGuidance?.containerClassName ?? "border-sky-200 bg-sky-50"}`}>
-                        <div className="flex items-center gap-2">
-                          <SectionIcon>
-                            <CalendarIcon />
-                          </SectionIcon>
-                          <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Another forecast source</p>
+                      <article className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
+                        <div className="mb-4 h-px bg-[linear-gradient(90deg,rgba(14,165,233,0.18),rgba(148,163,184,0))]" />
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-sky-100 bg-white text-sky-700 shadow-[0_6px_18px_rgba(14,165,233,0.10)]">
+                              <CalendarIcon />
+                            </span>
+                            <div>
+                              <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Second source</p>
+                              <p className="mt-1 text-sm font-medium text-slate-600">Alternative forecast signal</p>
+                            </div>
+                          </div>
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${secondaryGuidance?.chipClassName ?? "bg-slate-100 text-slate-700"}`}>
+                            {secondaryGuidance?.label ?? "No data"}
+                          </span>
                         </div>
-                        <p className="mt-2 text-lg font-semibold text-slate-950">
+                        <p className="mt-3 text-lg font-semibold text-slate-950">
                           Secondary check
                           {details.consensus.secondaryRecommendation ? ` says ${details.consensus.secondaryRecommendation}` : ""}
                         </p>
-                        <span className={`mt-2 inline-flex rounded-full border border-white/70 px-2.5 py-1 text-[11px] font-semibold ${secondaryGuidance?.chipClassName ?? "bg-white text-sky-800"}`}>
-                          {secondaryGuidance?.label ?? "No data"}
-                        </span>
-                        <p className="mt-2 text-sm font-semibold text-slate-950">{secondaryGuidance?.valueText ?? "Unavailable"}</p>
-                        <p className="mt-2 break-words text-sm leading-6 text-slate-600">{secondaryGuidance?.detail ?? "Secondary forecast guidance is unavailable right now."}</p>
-                        <p className="mt-2 text-xs leading-5 text-slate-500">
-                          Primary forecast above is from the main forecast source. This card checks the same date with another forecast source.
-                        </p>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <div className="rounded-[20px] border border-white/90 bg-white/80 px-3 py-3 backdrop-blur">
+                            <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Rain chance</p>
+                            <p className="mt-1 text-base font-semibold text-slate-950">
+                              {details.consensus.secondaryMetrics?.precipitationProbability ?? "--"}%
+                            </p>
+                          </div>
+                          <div className="rounded-[20px] border border-white/90 bg-white/80 px-3 py-3 backdrop-blur">
+                            <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Rain amount</p>
+                            <div className="mt-1">
+                              <p className="text-base font-semibold text-slate-950">
+                                {details.consensus.secondaryMetrics?.precipitationSum ?? "--"}{typeof details.consensus.secondaryMetrics?.precipitationSum === "number" ? " mm" : ""}
+                              </p>
+                              {typeof details.consensus.secondaryMetrics?.precipitationSum === "number" ? (
+                                <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">
+                                  {rainAmountLabel(details.consensus.secondaryMetrics.precipitationSum)}
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                        <p className="mt-3 text-sm font-semibold text-slate-950">{secondaryGuidance?.valueText ?? "Unavailable"}</p>
+                        <p className="mt-1 break-words text-sm leading-6 text-slate-600">{secondaryGuidance?.detail ?? "Second source is unavailable right now."}</p>
                       </article>
                     ) : null}
 
-                    <article className={`rounded-[24px] border px-4 py-4 ${historyGuidance?.containerClassName ?? "border-amber-200 bg-amber-50"}`}>
-                      <div className="flex items-center gap-2">
-                        <SectionIcon>
-                          <BookIcon />
-                        </SectionIcon>
-                        <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">2-year history</p>
-                      </div>
-                      <p className="mt-2 text-lg font-semibold text-slate-950">{historyGuidance?.valueText ?? "Unavailable"}</p>
-                      <span className="mt-2 inline-flex rounded-full border border-white/70 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                    <article className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fcfcfb_100%)] px-4 py-4 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
+                      <div className="mb-4 h-px bg-[linear-gradient(90deg,rgba(245,158,11,0.22),rgba(148,163,184,0))]" />
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-100 bg-white text-amber-700 shadow-[0_6px_18px_rgba(245,158,11,0.10)]">
+                            <BookIcon />
+                          </span>
+                          <div>
+                            <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Recent history</p>
+                            <p className="mt-1 text-sm font-medium text-slate-600">Last 2 years</p>
+                          </div>
+                        </div>
+                        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
                         {historyGuidance?.label ?? "No data"}
                       </span>
+                      </div>
                       <p className="mt-2 break-words text-sm leading-6 text-slate-600">
                         {historyGuidance?.detail ?? historySummary(details)}
                       </p>
-                      <div className="mt-3 rounded-[20px] border border-white/80 bg-white/70 px-3 py-3">
-                        <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Same date lately</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-950">
-                          {details.history.targetDateWetDayChance}% wet days, around {details.history.targetDateAvgPrecipitation} mm
-                        </p>
-                        <p className="mt-1 text-xs leading-5 text-slate-600">
-                          History only, not a live forecast.
-                        </p>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <div className="rounded-[20px] border border-white/90 bg-white/80 px-3 py-3 backdrop-blur">
+                          <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Same date</p>
+                          <p className="mt-1 text-base font-semibold text-slate-950">{details.history.targetDateWetDayChance}% wet days</p>
+                        </div>
+                        <div className="rounded-[20px] border border-white/90 bg-white/80 px-3 py-3 backdrop-blur">
+                          <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Avg rain</p>
+                          <div className="mt-1">
+                            <p className="text-base font-semibold text-slate-950">{details.history.targetDateAvgPrecipitation} mm</p>
+                            <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">
+                              {rainAmountLabel(details.history.targetDateAvgPrecipitation)}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <p className="mt-2 break-words text-xs leading-5 text-slate-500">{details.history.note}</p>
+                      <p className="mt-3 text-xl font-semibold text-slate-950">{historyGuidance?.valueText ?? "Unavailable"}</p>
+                      <p className="mt-1 break-words text-xs leading-5 text-slate-500">{historySummary(details)}</p>
                     </article>
                   </div>
                 ) : null : null}
@@ -987,7 +1066,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
 
               {result.mode === "climate" && !showMoreDetails ? (
                 <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900 shadow-sm">
-                  More details is the most useful part for this long-range result because it shows the recent month history behind the guidance.
+                  Open Cross-checks for the recent month history behind this planning result.
                 </div>
               ) : null}
 
