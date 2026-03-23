@@ -25,8 +25,25 @@ export class UpstreamWeatherTimeoutError extends Error {
   }
 }
 
+export class UpstreamWeatherHttpError extends Error {
+  provider: string;
+
+  status: number;
+
+  constructor(provider: string, status: number) {
+    super(`${provider} request failed (${status}).`);
+    this.name = "UpstreamWeatherHttpError";
+    this.provider = provider;
+    this.status = status;
+  }
+}
+
 export function isUpstreamWeatherTimeoutError(error: unknown): error is UpstreamWeatherTimeoutError {
   return error instanceof UpstreamWeatherTimeoutError;
+}
+
+export function isUpstreamWeatherHttpError(error: unknown): error is UpstreamWeatherHttpError {
+  return error instanceof UpstreamWeatherHttpError;
 }
 
 function isAbortError(error: unknown): boolean {
@@ -51,7 +68,7 @@ export async function fetchWeatherJson<T>(
     });
 
     if (!response.ok) {
-      throw new Error(`${provider} request failed (${response.status})`);
+      throw new UpstreamWeatherHttpError(provider, response.status);
     }
 
     return (await response.json()) as T;

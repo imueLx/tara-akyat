@@ -1,4 +1,4 @@
-import { isUpstreamWeatherTimeoutError } from "@/lib/weather/http";
+import { isUpstreamWeatherHttpError, isUpstreamWeatherTimeoutError } from "@/lib/weather/http";
 
 type WeatherRouteErrorResult = {
   status: number;
@@ -21,6 +21,27 @@ export function normalizeWeatherRouteError(error: unknown, fallbackMessage: stri
     return {
       status: 504,
       message: "Weather provider is taking too long to respond. Please try again shortly.",
+    };
+  }
+
+  if (isUpstreamWeatherHttpError(error)) {
+    if (error.status === 429) {
+      return {
+        status: 503,
+        message: "Weather provider is rate-limited right now. Please retry in a moment.",
+      };
+    }
+
+    if (error.status >= 500) {
+      return {
+        status: 502,
+        message: "Weather provider is temporarily unavailable. Please try again shortly.",
+      };
+    }
+
+    return {
+      status: 502,
+      message: "Weather provider returned an unexpected response.",
     };
   }
 
