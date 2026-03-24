@@ -46,6 +46,7 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
+    siteName: SITE_NAME,
     title: `${homeTitle} | ${SITE_NAME}`,
     description: homeDescription,
     url: "/",

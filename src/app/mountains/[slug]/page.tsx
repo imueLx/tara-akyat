@@ -116,6 +116,7 @@ export async function generateMetadata({ params }: Pick<Props, "params">): Promi
     },
     openGraph: {
       type: "article",
+      siteName: SITE_NAME,
       title: `${pageTitle} | ${SITE_NAME}`,
       description,
       url: pageUrl,

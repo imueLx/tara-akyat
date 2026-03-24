@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Chivo, JetBrains_Mono } from "next/font/google";
 
 import { AppTopNav } from "@/components/app-top-nav";
-import { DEFAULT_OG_IMAGE_PATH, SITE_DESCRIPTION, SITE_LOCALE, SITE_NAME, getBaseUrl } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE_PATH, SITE_DESCRIPTION, SITE_LOCALE, SITE_LOGO_PATH, SITE_NAME, getBaseUrl } from "@/lib/seo";
 import { getThemeBootstrapScript } from "@/lib/theme";
 
 import "./globals.css";
@@ -25,6 +25,15 @@ export const metadata: Metadata = {
   },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
+  icons: {
+    icon: [
+      { url: "/icon", type: "image/png", sizes: "512x512" },
+      { url: SITE_LOGO_PATH, type: "image/svg+xml", sizes: "any" },
+    ],
+    apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
+    shortcut: [{ url: "/icon", type: "image/png", sizes: "512x512" }],
+  },
+  manifest: "/manifest.webmanifest",
   openGraph: {
     type: "website",
     siteName: SITE_NAME,

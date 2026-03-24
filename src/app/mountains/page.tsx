@@ -24,6 +24,7 @@ export const metadata: Metadata = {
     canonical: "/mountains",
   },
   openGraph: {
+    siteName: SITE_NAME,
     title: `${browsePageTitle} | ${SITE_NAME}`,
     description: browsePageDescription,
     url: "/mountains",
