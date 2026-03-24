@@ -6,7 +6,7 @@ import { RecommendationPill } from "@/components/mountains/recommendation-pill";
 import { addDays, differenceInDays, formatISODate, isValidDate } from "@/lib/date";
 import { getWeatherClientCache, setWeatherClientCache } from "@/lib/weather/client-cache";
 import { getSelectedReliability } from "@/lib/weather/reliability";
-import type { WeatherCheckDetails, WeatherCheckResult } from "@/types/hiking";
+import type { HikeWindowRainMetrics, WeatherCheckDetails, WeatherCheckResult } from "@/types/hiking";
 
 type Props = {
   lat: number;
@@ -133,14 +133,37 @@ function reliabilityPlainLanguage(result: WeatherCheckResult): string {
 
 function historySummary(details: WeatherCheckDetails): string {
   if (details.history.targetMonthWetDayChance >= 55) {
-    return "This month has been wet more often lately.";
+    return "Over the last 2 years, this month was often wet.";
   }
 
   if (details.history.targetMonthWetDayChance >= 35) {
-    return "This month has had mixed wet and dry days lately.";
+    return "Over the last 2 years, this month had mixed wet and dry days.";
   }
 
-  return "This month has been mostly drier lately.";
+  return "Over the last 2 years, this month was mostly drier.";
+}
+
+function formatWindowRainValue(
+  metrics: HikeWindowRainMetrics | null | undefined,
+  fallback?: { precipitationProbability: number; precipitationSum: number } | null,
+): string {
+  if (!metrics) {
+    if (fallback) {
+      return `${fallback.precipitationProbability}% chance, ${fallback.precipitationSum} mm`;
+    }
+
+    return "Window rain unavailable";
+  }
+
+  return `${metrics.label}: ${metrics.precipitationProbability}% chance, ${metrics.precipitationSum} mm`;
+}
+
+function formatRainValueCompact(metrics: HikeWindowRainMetrics | null | undefined): string {
+  if (!metrics) {
+    return "Unavailable";
+  }
+
+  return `${metrics.precipitationProbability}% chance, ${metrics.precipitationSum} mm`;
 }
 
 function compactReasons(result: WeatherCheckResult): string[] {
@@ -309,7 +332,7 @@ function historyContextTone(wetDayChance: number): GuidanceTone {
       containerClassName: "border-sky-200 bg-sky-50",
       chipClassName: "border border-sky-100 bg-sky-50 text-sky-700",
       label: "Wet",
-      detail: "Past pattern only.",
+      detail: "2-year weather history.",
       valueText: `${wetDayChance}% wet days`,
     };
   }
@@ -319,7 +342,7 @@ function historyContextTone(wetDayChance: number): GuidanceTone {
       containerClassName: "border-amber-200 bg-amber-50",
       chipClassName: "border border-amber-100 bg-amber-50 text-amber-700",
       label: "Mixed",
-      detail: "Past pattern only.",
+      detail: "2-year weather history.",
       valueText: `${wetDayChance}% wet days`,
     };
   }
@@ -328,13 +351,14 @@ function historyContextTone(wetDayChance: number): GuidanceTone {
     containerClassName: "border-emerald-200 bg-emerald-50",
     chipClassName: "border border-emerald-100 bg-emerald-50 text-emerald-700",
     label: "Drier",
-    detail: "Past pattern only.",
+    detail: "2-year weather history.",
     valueText: `${wetDayChance}% wet days`,
   };
 }
 
 function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
-  const secondaryMetrics = details.consensus.secondaryMetrics;
+  const secondaryWindow = details.consensus.secondaryHikeWindowRain;
+  const secondaryMetrics = secondaryWindow ?? details.consensus.secondaryMetrics;
 
   if (!secondaryMetrics) {
     return {
@@ -354,8 +378,8 @@ function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
       containerClassName: "border-sky-200 bg-sky-50",
       chipClassName: "border border-sky-100 bg-sky-50 text-sky-700",
       label: "Wet",
-      detail: "Second source for this date.",
-      valueText: `${rainChance}% chance, ${rainMm} mm`,
+      detail: secondaryWindow ? "Another forecast for hiking hours." : "Another forecast for this date.",
+      valueText: formatWindowRainValue(secondaryWindow, details.consensus.secondaryMetrics),
     };
   }
 
@@ -364,8 +388,8 @@ function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
       containerClassName: "border-amber-200 bg-amber-50",
       chipClassName: "border border-amber-100 bg-amber-50 text-amber-700",
       label: "Mixed",
-      detail: "Second source for this date.",
-      valueText: `${rainChance}% chance, ${rainMm} mm`,
+      detail: secondaryWindow ? "Another forecast for hiking hours." : "Another forecast for this date.",
+      valueText: formatWindowRainValue(secondaryWindow, details.consensus.secondaryMetrics),
     };
   }
 
@@ -373,8 +397,8 @@ function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
     containerClassName: "border-emerald-200 bg-emerald-50",
     chipClassName: "border border-emerald-100 bg-emerald-50 text-emerald-700",
     label: "Dry",
-    detail: "Second source for this date.",
-    valueText: `${rainChance}% chance, ${rainMm} mm`,
+    detail: secondaryWindow ? "Another forecast for hiking hours." : "Another forecast for this date.",
+    valueText: formatWindowRainValue(secondaryWindow, details.consensus.secondaryMetrics),
   };
 }
 
@@ -473,9 +497,12 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
       return null;
     }
 
+    const rainChanceValue = result.hikeWindowRain?.precipitationProbability ?? result.metrics.precipitationProbability;
+    const rainAmountValue = result.hikeWindowRain?.precipitationSum ?? result.metrics.precipitationSum;
+
     return {
-      rainChance: rainChanceTone(result.metrics.precipitationProbability),
-      rainAmount: rainAmountTone(result.metrics.precipitationSum),
+      rainChance: rainChanceTone(rainChanceValue),
+      rainAmount: rainAmountTone(rainAmountValue),
       wind: windTone(result.metrics.windSpeedMax),
       feelsLike: feelsLikeTone(result.metrics.apparentTemperatureMax),
     };
@@ -705,9 +732,11 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
                       </span>
                     </div>
                     <p className={`mt-2 text-lg font-semibold ${metricGuides.rainChance.valueClassName}`}>
-                      {result.metrics.precipitationProbability}%
+                      {result.hikeWindowRain?.precipitationProbability ?? result.metrics.precipitationProbability}%
                     </p>
-                    <p className="mt-1 text-xs text-slate-600">{metricGuides.rainChance.detail}</p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      {result.hikeWindowRain ? "Primary source, hiking-hours only." : metricGuides.rainChance.detail}
+                    </p>
                   </article>
 
                   <article className={`rounded-2xl border px-3 py-3 ${metricGuides.rainAmount.cardClassName}`}>
@@ -718,9 +747,11 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
                       </span>
                     </div>
                     <p className={`mt-2 text-lg font-semibold ${metricGuides.rainAmount.valueClassName}`}>
-                      {result.metrics.precipitationSum} mm
+                      {result.hikeWindowRain?.precipitationSum ?? result.metrics.precipitationSum} mm
                     </p>
-                    <p className="mt-1 text-xs text-slate-600">{metricGuides.rainAmount.detail}</p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      {result.hikeWindowRain ? "Primary source, hiking-hours only." : metricGuides.rainAmount.detail}
+                    </p>
                   </article>
 
                   <article className={`rounded-2xl border px-3 py-3 ${metricGuides.wind.cardClassName}`}>
@@ -823,50 +854,62 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
                     <article className="overflow-hidden rounded-[22px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-3 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
                       <div className="mb-3 h-px bg-[linear-gradient(90deg,rgba(14,165,233,0.18),rgba(148,163,184,0))]" />
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-semibold text-slate-900">Second source</p>
+                        <p className="text-xs font-semibold text-slate-900">Forecast cross-check</p>
                         <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${secondaryGuidance?.chipClassName ?? "bg-slate-100 text-slate-700"}`}>
                           {secondaryGuidance?.label ?? "No data"}
                         </span>
                       </div>
                       <p className="mt-2 text-sm font-semibold text-slate-900">
-                        Secondary check
-                        {details.consensus.secondaryRecommendation ? ` says ${details.consensus.secondaryRecommendation}` : ""}
+                        {details.consensus.secondaryRecommendation
+                          ? `${details.consensus.secondaryRecommendation} from the second forecast`
+                          : "Second forecast details"}
+                      </p>
+                      <p className="mt-1 break-words text-xs leading-5 text-slate-700">
+                        {details.consensus.secondaryHikeWindowRain
+                          ? `Rain summary for the ${details.consensus.secondaryHikeWindowRain.label} hiking window.`
+                          : "Rain summary from the second provider for this date."}
                       </p>
                       <div className="mt-2 grid grid-cols-2 gap-2">
                         <div className="rounded-xl border border-white/90 bg-white/80 px-3 py-2">
                           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Rain chance</p>
                           <p className="mt-1 text-sm font-semibold text-slate-900">
-                            {details.consensus.secondaryMetrics?.precipitationProbability ?? "--"}%
+                            {details.consensus.secondaryHikeWindowRain?.precipitationProbability ?? details.consensus.secondaryMetrics?.precipitationProbability ?? "--"}%
                           </p>
                         </div>
                         <div className="rounded-xl border border-white/90 bg-white/80 px-3 py-2">
                           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Rain amount</p>
                           <div className="mt-1">
                             <p className="text-sm font-semibold text-slate-900">
-                              {details.consensus.secondaryMetrics?.precipitationSum ?? "--"}{typeof details.consensus.secondaryMetrics?.precipitationSum === "number" ? " mm" : ""}
+                              {details.consensus.secondaryHikeWindowRain?.precipitationSum ?? details.consensus.secondaryMetrics?.precipitationSum ?? "--"}
+                              {typeof (details.consensus.secondaryHikeWindowRain?.precipitationSum ?? details.consensus.secondaryMetrics?.precipitationSum) === "number" ? " mm" : ""}
                             </p>
-                            {typeof details.consensus.secondaryMetrics?.precipitationSum === "number" ? (
+                            {typeof (details.consensus.secondaryHikeWindowRain?.precipitationSum ?? details.consensus.secondaryMetrics?.precipitationSum) === "number" ? (
                               <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">
-                                {rainAmountLabel(details.consensus.secondaryMetrics.precipitationSum)}
+                                {rainAmountLabel(details.consensus.secondaryHikeWindowRain?.precipitationSum ?? details.consensus.secondaryMetrics?.precipitationSum ?? 0)}
                               </p>
                             ) : null}
                           </div>
                         </div>
                       </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-900">{secondaryGuidance?.valueText ?? "Unavailable"}</p>
-                      <p className="mt-1 break-words text-xs leading-5 text-slate-700">{secondaryGuidance?.detail ?? "Second source is unavailable right now."}</p>
+                      <p className="mt-2 text-sm font-semibold text-slate-900">
+                        {details.consensus.primaryHikeWindowRain
+                          ? `Main forecast: ${formatRainValueCompact(details.consensus.primaryHikeWindowRain)}`
+                          : secondaryGuidance?.valueText ?? "Unavailable"}
+                      </p>
                     </article>
                   ) : null}
 
                   <article className="overflow-hidden rounded-[22px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fcfcfb_100%)] px-3 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
                     <div className="mb-3 h-px bg-[linear-gradient(90deg,rgba(245,158,11,0.22),rgba(148,163,184,0))]" />
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-slate-900">Recent history</p>
+                      <p className="text-xs font-semibold text-slate-900">2-year history</p>
                       <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700">
                         {historyGuidance?.label ?? "No data"}
                       </span>
                     </div>
-                    <p className="mt-1 break-words text-xs leading-5 text-slate-700">{historyGuidance?.detail ?? historySummary(details)}</p>
+                    <p className="mt-1 break-words text-xs leading-5 text-slate-700">
+                      These numbers come from the last 2 years of rainfall for this mountain area.
+                    </p>
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <div className="rounded-xl border border-white/90 bg-white/80 px-3 py-2">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Same date</p>

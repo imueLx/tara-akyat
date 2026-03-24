@@ -68,6 +68,17 @@ describe("GET /api/weather/check/details", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
+            hourly: {
+              time: [`${targetDate}T04:00`, `${targetDate}T10:00`, `${targetDate}T16:00`],
+              precipitation: [0, 0, 0],
+              precipitation_probability: [5, 5, 5],
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
             days: [
               {
                 datetime: targetDate,
@@ -77,6 +88,22 @@ describe("GET /api/weather/check/details", () => {
                 precipprob: 5,
                 windspeed: 10,
                 conditions: "Clear",
+              },
+            ],
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            days: [
+              {
+                datetime: targetDate,
+                hours: [
+                  { datetime: "04:00:00", precip: 0, precipprob: 5 },
+                  { datetime: "10:00:00", precip: 0, precipprob: 5 },
+                  { datetime: "16:00:00", precip: 0, precipprob: 5 },
+                ],
               },
             ],
           }),

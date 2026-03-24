@@ -1,6 +1,10 @@
 import { addDays, formatISODate, monthBounds } from "@/lib/date";
 import { fetchWeatherJson } from "@/lib/weather/http";
-import type { ClimateGuidance, DailyWeatherMetrics, HistoryCrosscheck } from "@/types/hiking";
+import type { ClimateGuidance, DailyWeatherMetrics, HikeWindowRainMetrics, HistoryCrosscheck } from "@/types/hiking";
+
+const HIKE_WINDOW_START_HOUR = 4;
+const HIKE_WINDOW_END_HOUR = 14;
+const HIKE_WINDOW_LABEL = "4am-2pm";
 
 interface OpenMeteoDailyResponse {
   daily: {
@@ -21,6 +25,14 @@ interface OpenMeteoArchiveResponse {
   };
 }
 
+interface OpenMeteoHourlyResponse {
+  hourly: {
+    time: string[];
+    precipitation: number[];
+    precipitation_probability: number[];
+  };
+}
+
 function createForecastUrl(lat: number, lon: number, startDate: string, endDate: string): string {
   const params = new URLSearchParams({
     latitude: String(lat),
@@ -33,6 +45,56 @@ function createForecastUrl(lat: number, lon: number, startDate: string, endDate:
   });
 
   return `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
+}
+
+function createHourlyForecastUrl(lat: number, lon: number, date: string): string {
+  const params = new URLSearchParams({
+    latitude: String(lat),
+    longitude: String(lon),
+    timezone: "Asia/Manila",
+    start_date: date,
+    end_date: date,
+    hourly: "precipitation,precipitation_probability",
+  });
+
+  return `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
+}
+
+function summarizeHikeWindowRain(
+  timestamps: string[],
+  precipitation: number[],
+  precipitationProbability: number[],
+  date: string,
+): HikeWindowRainMetrics | null {
+  let precipitationSum = 0;
+  let precipitationProbabilityMax = 0;
+  let sampleHours = 0;
+
+  for (let i = 0; i < timestamps.length; i += 1) {
+    const [entryDate, timePart = ""] = timestamps[i].split("T");
+    const hour = Number.parseInt(timePart.slice(0, 2), 10);
+
+    if (entryDate !== date || !Number.isFinite(hour) || hour < HIKE_WINDOW_START_HOUR || hour > HIKE_WINDOW_END_HOUR) {
+      continue;
+    }
+
+    sampleHours += 1;
+    precipitationSum += precipitation[i] ?? 0;
+    precipitationProbabilityMax = Math.max(precipitationProbabilityMax, precipitationProbability[i] ?? 0);
+  }
+
+  if (sampleHours === 0) {
+    return null;
+  }
+
+  return {
+    label: HIKE_WINDOW_LABEL,
+    startHour: HIKE_WINDOW_START_HOUR,
+    endHour: HIKE_WINDOW_END_HOUR,
+    sampleHours,
+    precipitationProbability: Number(precipitationProbabilityMax.toFixed(0)),
+    precipitationSum: Number(precipitationSum.toFixed(1)),
+  };
 }
 
 export async function fetchForecastRange(
@@ -69,6 +131,22 @@ export async function fetchBestDaysForecast(
   const endDate = formatISODate(addDays(today, days - 1));
 
   return fetchForecastRange(lat, lon, startDate, endDate);
+}
+
+export async function fetchOpenMeteoHikeWindowRain(
+  lat: number,
+  lon: number,
+  date: string,
+): Promise<HikeWindowRainMetrics | null> {
+  const url = createHourlyForecastUrl(lat, lon, date);
+  const payload = await fetchWeatherJson<OpenMeteoHourlyResponse>(url, "Open-Meteo hourly forecast", 1800);
+
+  return summarizeHikeWindowRain(
+    payload.hourly.time,
+    payload.hourly.precipitation,
+    payload.hourly.precipitation_probability,
+    date,
+  );
 }
 
 export async function fetchClimateGuidance(lat: number, lon: number, targetDate: string): Promise<ClimateGuidance> {

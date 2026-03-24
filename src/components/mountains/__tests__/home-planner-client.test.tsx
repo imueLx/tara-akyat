@@ -57,6 +57,7 @@ const climatePayload = {
   confidence: "low",
   reasons: ["Date is outside reliable daily forecast range."],
   metrics: null,
+  hikeWindowRain: null,
   climate: {
     month: "April",
     avgPrecipitation: 3.8,
@@ -101,6 +102,8 @@ const climateDetailsPayload = {
     secondaryAvailable: false,
     secondaryRecommendation: null,
     secondaryMetrics: null,
+    primaryHikeWindowRain: null,
+    secondaryHikeWindowRain: null,
     agreement: "unavailable",
     note: "Consensus is only generated for day-level forecast dates.",
   },
@@ -231,7 +234,7 @@ describe("HomePlannerClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Recent history")).toBeInTheDocument();
+      expect(screen.getByText("2-year history")).toBeInTheDocument();
       expect(screen.getAllByText("42% wet days").length).toBeGreaterThan(0);
       expect(screen.getByText(/^Same date$/)).toBeInTheDocument();
       expect(screen.queryByText("Another forecast source")).not.toBeInTheDocument();
@@ -258,7 +261,7 @@ describe("HomePlannerClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
     await waitFor(() => {
-      expect(screen.getByText("Recent history")).toBeInTheDocument();
+      expect(screen.getByText("2-year history")).toBeInTheDocument();
       expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
 

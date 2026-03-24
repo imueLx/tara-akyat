@@ -35,9 +35,10 @@ describe("GET /api/weather/check", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            daily: {
-              time: ["2024-03-01", "2025-03-01"],
-              precipitation_sum: [1, 2],
+            hourly: {
+              time: ["2026-03-24T04:00", "2026-03-24T10:00", "2026-03-24T16:00"],
+              precipitation: [0, 0, 0],
+              precipitation_probability: [0, 0, 0],
             },
           }),
         ),

@@ -36,6 +36,14 @@ describe("DateWeatherChecker", () => {
       apparentTemperatureMax: 29,
       weatherCode: 1,
     },
+    hikeWindowRain: {
+      label: "4am-2pm",
+      startHour: 4,
+      endHour: 14,
+      sampleHours: 11,
+      precipitationProbability: 0,
+      precipitationSum: 0,
+    },
     climate: null,
     reliability: {
       selectedLabel: "3-day",
@@ -62,6 +70,7 @@ describe("DateWeatherChecker", () => {
     confidence: "low",
     reasons: ["Date is outside reliable daily forecast range."],
     metrics: null,
+    hikeWindowRain: null,
     climate: {
       month: "April",
       avgPrecipitation: 3.8,
@@ -106,6 +115,8 @@ describe("DateWeatherChecker", () => {
       secondaryAvailable: false,
       secondaryRecommendation: null,
       secondaryMetrics: null,
+      primaryHikeWindowRain: null,
+      secondaryHikeWindowRain: null,
       agreement: "unavailable",
       note: "Consensus is only generated for day-level forecast dates within 15 days.",
     },
@@ -124,7 +135,7 @@ describe("DateWeatherChecker", () => {
       expect(screen.getByText(/Exact forecast is day-specific up to 15 days/)).toBeInTheDocument();
       expect(screen.getByText(/Why this result/)).toBeInTheDocument();
       expect(screen.getAllByText(/How reliable/).length).toBeGreaterThan(0);
-      expect(screen.getByText(/No rain expected/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Primary source, hiking-hours only/).length).toBeGreaterThan(0);
       expect(screen.getByText("None")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Cross-checks/i })).toHaveAttribute("aria-expanded", "false");
       expect(screen.queryByText(/Usually drier|Mixed month|Historically wet/)).not.toBeInTheDocument();
@@ -216,7 +227,7 @@ describe("DateWeatherChecker", () => {
     fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Recent history")).toBeInTheDocument();
+      expect(screen.getByText("2-year history")).toBeInTheDocument();
       expect(screen.getAllByText("42% wet days").length).toBeGreaterThan(0);
       expect(screen.getByText(/^Same date$/)).toBeInTheDocument();
       expect(screen.queryByText("Another forecast source")).not.toBeInTheDocument();

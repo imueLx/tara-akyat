@@ -45,6 +45,15 @@ export interface DailyWeatherMetrics {
   weatherCode: number;
 }
 
+export interface HikeWindowRainMetrics {
+  label: string;
+  startHour: number;
+  endHour: number;
+  sampleHours: number;
+  precipitationProbability: number;
+  precipitationSum: number;
+}
+
 export interface ScoredDay {
   date: string;
   recommendation: RecommendationLevel;
@@ -79,6 +88,8 @@ export interface ProviderConsensus {
   secondaryAvailable: boolean;
   secondaryRecommendation: RecommendationLevel | null;
   secondaryMetrics: DailyWeatherMetrics | null;
+  primaryHikeWindowRain: HikeWindowRainMetrics | null;
+  secondaryHikeWindowRain: HikeWindowRainMetrics | null;
   agreement: "aligned" | "mixed" | "unavailable";
   note: string;
 }
@@ -105,6 +116,7 @@ export interface WeatherCheckResult {
   confidence: "high" | "medium" | "low";
   reasons: string[];
   metrics: DailyWeatherMetrics | null;
+  hikeWindowRain: HikeWindowRainMetrics | null;
   climate: ClimateGuidance | null;
   reliability: ForecastReliability;
 }
