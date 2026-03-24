@@ -217,18 +217,18 @@ function formatBestMonthsWindow(months?: string[]): string | null {
 
 function resultSummary(result: WeatherCheckResult): string {
   if (result.mode === "climate") {
-    return "Advance planning guidance only. Recheck near hike day for a day-level forecast.";
+    return "Planning guide only. Recheck near hike day.";
   }
 
   if (result.recommendation === "Good") {
-    return "Forecast conditions look favorable enough for most hikers.";
+    return "Conditions look good for most hikers.";
   }
 
   if (result.recommendation === "Caution") {
-    return "Conditions are mixed. Hiking may still be okay, but plan for extra caution.";
+    return "Conditions are mixed. Plan extra caution.";
   }
 
-  return "Weather risk is high enough that moving the hike is usually safer.";
+  return "Risk looks high. Moving the hike is safer.";
 }
 
 function reliabilityTone(accuracy: number): string {
@@ -286,7 +286,7 @@ function rainChanceTone(value: number): MetricTone {
   if (value >= 35) {
     return {
       label: "Medium",
-      detail: "Showers possible",
+      detail: "Rain possible",
       containerClassName: "border-amber-200 bg-amber-50",
       pillClassName: "bg-amber-100 text-amber-800",
       valueClassName: "text-amber-950",
@@ -296,7 +296,7 @@ function rainChanceTone(value: number): MetricTone {
 
   return {
     label: "Low",
-    detail: "Lower rain chance",
+    detail: "Less rain likely",
     containerClassName: "border-emerald-200 bg-emerald-50",
     pillClassName: "bg-emerald-100 text-emerald-800",
     valueClassName: "text-emerald-950",
@@ -330,7 +330,7 @@ function rainAmountTone(value: number): MetricTone {
   if (value >= 2) {
     return {
       label: "Moderate",
-      detail: "Some rain expected",
+      detail: "Rain possible",
       containerClassName: "border-amber-200 bg-amber-50",
       pillClassName: "bg-amber-100 text-amber-800",
       valueClassName: "text-amber-950",
@@ -340,7 +340,7 @@ function rainAmountTone(value: number): MetricTone {
 
   return {
     label: "Light",
-    detail: "Light rain possible",
+    detail: "Light rain",
     containerClassName: "border-emerald-200 bg-emerald-50",
     pillClassName: "bg-emerald-100 text-emerald-800",
     valueClassName: "text-emerald-950",
@@ -389,7 +389,7 @@ function windTone(value: number): MetricTone {
 
   return {
     label: "Calm",
-    detail: "Comfortable wind",
+      detail: "Light wind",
     containerClassName: "border-emerald-200 bg-emerald-50",
     pillClassName: "bg-emerald-100 text-emerald-800",
     valueClassName: "text-emerald-950",
@@ -423,7 +423,7 @@ function feelsLikeTone(value: number): MetricTone {
   if (value >= 18) {
     return {
       label: "Comfortable",
-      detail: "Good hiking feel",
+      detail: "Comfortable",
       containerClassName: "border-emerald-200 bg-emerald-50",
       pillClassName: "bg-emerald-100 text-emerald-800",
       valueClassName: "text-emerald-950",
@@ -482,7 +482,7 @@ function historyContextTone(wetDayChance: number): GuidanceTone {
       containerClassName: "border-sky-200 bg-sky-50",
       chipClassName: "border border-sky-100 bg-sky-50 text-sky-700",
       label: "Wet",
-      detail: "2-year weather history.",
+      detail: "Past 2 years.",
       valueText: `${wetDayChance}% wet days`,
     };
   }
@@ -492,7 +492,7 @@ function historyContextTone(wetDayChance: number): GuidanceTone {
       containerClassName: "border-amber-200 bg-amber-50",
       chipClassName: "border border-amber-100 bg-amber-50 text-amber-700",
       label: "Mixed",
-      detail: "2-year weather history.",
+      detail: "Past 2 years.",
       valueText: `${wetDayChance}% wet days`,
     };
   }
@@ -501,7 +501,7 @@ function historyContextTone(wetDayChance: number): GuidanceTone {
     containerClassName: "border-emerald-200 bg-emerald-50",
     chipClassName: "border border-emerald-100 bg-emerald-50 text-emerald-700",
     label: "Drier",
-    detail: "2-year weather history.",
+    detail: "Past 2 years.",
     valueText: `${wetDayChance}% wet days`,
   };
 }
@@ -528,7 +528,7 @@ function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
       containerClassName: "border-sky-200 bg-sky-50",
       chipClassName: "border border-sky-100 bg-sky-50 text-sky-700",
       label: "Wet",
-      detail: secondaryWindow ? "Another forecast for hiking hours." : "Another forecast for this date.",
+      detail: secondaryWindow ? "Second provider, hiking hours." : "Second provider.",
       valueText: formatWindowRainValue(secondaryWindow, details.consensus.secondaryMetrics),
     };
   }
@@ -538,7 +538,7 @@ function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
       containerClassName: "border-amber-200 bg-amber-50",
       chipClassName: "border border-amber-100 bg-amber-50 text-amber-700",
       label: "Mixed",
-      detail: secondaryWindow ? "Another forecast for hiking hours." : "Another forecast for this date.",
+      detail: secondaryWindow ? "Second provider, hiking hours." : "Second provider.",
       valueText: formatWindowRainValue(secondaryWindow, details.consensus.secondaryMetrics),
     };
   }
@@ -547,7 +547,7 @@ function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
     containerClassName: "border-emerald-200 bg-emerald-50",
     chipClassName: "border border-emerald-100 bg-emerald-50 text-emerald-700",
     label: "Dry",
-    detail: secondaryWindow ? "Another forecast for hiking hours." : "Another forecast for this date.",
+    detail: secondaryWindow ? "Second provider, hiking hours." : "Second provider.",
     valueText: formatWindowRainValue(secondaryWindow, details.consensus.secondaryMetrics),
   };
 }
@@ -1117,20 +1117,14 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                       title="Rain chance"
                       value={String(result.hikeWindowRain?.precipitationProbability ?? result.metrics.precipitationProbability)}
                       unit="%"
-                      tone={{
-                        ...metricGuides.rainChance,
-                        detail: result.hikeWindowRain ? "Primary source, hiking-hours only." : metricGuides.rainChance.detail,
-                      }}
+                      tone={metricGuides.rainChance}
                       icon={<RainIcon />}
                     />
                     <MetricCard
                       title="Rain (mm)"
                       value={String(result.hikeWindowRain?.precipitationSum ?? result.metrics.precipitationSum)}
                       unit="mm"
-                      tone={{
-                        ...metricGuides.rainAmount,
-                        detail: result.hikeWindowRain ? "Primary source, hiking-hours only." : metricGuides.rainAmount.detail,
-                      }}
+                      tone={metricGuides.rainAmount}
                       icon={<DropletIcon />}
                     />
                     <MetricCard
@@ -1184,8 +1178,8 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                       </span>
                       <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Cross-checks</p>
                     </div>
-                    <p className="mt-2 text-base font-semibold tracking-tight text-slate-950">Second forecast and recent history</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">A second weather check plus recent rain patterns.</p>
+                    <p className="mt-2 text-base font-semibold tracking-tight text-slate-950">Forecast cross-checks</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">Second forecast and 2-year rain history.</p>
                     {result.mode === "climate" ? (
                       <p className="mt-2 inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">
                         Recommended for this result. This date is outside day-level forecast range.
@@ -1219,7 +1213,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                             </span>
                             <div>
                               <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Forecast cross-check</p>
-                              <p className="mt-1 text-sm font-medium text-slate-600">From a second weather provider</p>
+                              <p className="mt-1 text-sm font-medium text-slate-600">Second provider</p>
                             </div>
                           </div>
                           <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${secondaryGuidance?.chipClassName ?? "bg-slate-100 text-slate-700"}`}>
@@ -1275,7 +1269,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                           </span>
                           <div>
                             <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">2-year history</p>
-                            <p className="mt-1 text-sm font-medium text-slate-600">Based on the same date and month</p>
+                            <p className="mt-1 text-sm font-medium text-slate-600">Same date and month</p>
                           </div>
                         </div>
                         <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
@@ -1283,7 +1277,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                       </span>
                       </div>
                       <p className="mt-2 break-words text-sm leading-6 text-slate-600">
-                        These numbers come from the last 2 years of rainfall for this mountain area.
+                        Based on rainfall from the past 2 years.
                       </p>
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         <div className="rounded-[16px] border border-white/90 bg-white/80 px-3 py-3 backdrop-blur">

@@ -135,7 +135,7 @@ describe("DateWeatherChecker", () => {
       expect(screen.getByText(/Exact forecast is day-specific up to 15 days/)).toBeInTheDocument();
       expect(screen.getByText(/Why this result/)).toBeInTheDocument();
       expect(screen.getAllByText(/How reliable/).length).toBeGreaterThan(0);
-      expect(screen.getAllByText(/Primary source, hiking-hours only/).length).toBeGreaterThan(0);
+      expect(screen.getByText(/No rain expected/)).toBeInTheDocument();
       expect(screen.getByText("None")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Cross-checks/i })).toHaveAttribute("aria-expanded", "false");
       expect(screen.queryByText(/Usually drier|Mixed month|Historically wet/)).not.toBeInTheDocument();

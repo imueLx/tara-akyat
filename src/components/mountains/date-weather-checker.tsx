@@ -68,18 +68,18 @@ function resultHeading(result: WeatherCheckResult): string {
 
 function resultMessage(result: WeatherCheckResult): string {
   if (result.mode === "climate") {
-    return "This date is outside day-level forecast range, so this uses planning outlook from recent history instead.";
+    return "Outside forecast range. Use this as planning guidance.";
   }
 
   if (result.recommendation === "Good") {
-    return "Forecast conditions look favorable enough for most hikers.";
+    return "Conditions look good for most hikers.";
   }
 
   if (result.recommendation === "Caution") {
-    return "Conditions are mixed. Hiking may still be okay, but plan for extra caution.";
+    return "Conditions are mixed. Plan extra caution.";
   }
 
-  return "Weather risk is high enough that postponing is usually safer.";
+  return "Risk looks high. Postponing is safer.";
 }
 
 function formatReadableDate(value: string): string {
@@ -193,7 +193,7 @@ function rainChanceTone(value: number): MetricTone {
 
   return {
     label: "Low",
-    detail: "Lower rain chance",
+      detail: "Less rain likely",
     cardClassName: "border-emerald-200 bg-emerald-50",
     pillClassName: "bg-emerald-100 text-emerald-800",
     valueClassName: "text-emerald-900",
@@ -224,7 +224,7 @@ function rainAmountTone(value: number): MetricTone {
   if (value >= 2) {
     return {
       label: "Moderate",
-      detail: "Some rain expected",
+      detail: "Rain possible",
       cardClassName: "border-amber-200 bg-amber-50",
       pillClassName: "bg-amber-100 text-amber-800",
       valueClassName: "text-amber-900",
@@ -233,7 +233,7 @@ function rainAmountTone(value: number): MetricTone {
 
   return {
     label: "Light",
-    detail: "Light rain possible",
+    detail: "Light rain",
     cardClassName: "border-emerald-200 bg-emerald-50",
     pillClassName: "bg-emerald-100 text-emerald-800",
     valueClassName: "text-emerald-900",
@@ -279,7 +279,7 @@ function windTone(value: number): MetricTone {
 
   return {
     label: "Calm",
-    detail: "Comfortable wind",
+      detail: "Light wind",
     cardClassName: "border-emerald-200 bg-emerald-50",
     pillClassName: "bg-emerald-100 text-emerald-800",
     valueClassName: "text-emerald-900",
@@ -310,7 +310,7 @@ function feelsLikeTone(value: number): MetricTone {
   if (value >= 18) {
     return {
       label: "Comfortable",
-      detail: "Good hiking feel",
+      detail: "Comfortable",
       cardClassName: "border-emerald-200 bg-emerald-50",
       pillClassName: "bg-emerald-100 text-emerald-800",
       valueClassName: "text-emerald-900",
@@ -332,7 +332,7 @@ function historyContextTone(wetDayChance: number): GuidanceTone {
       containerClassName: "border-sky-200 bg-sky-50",
       chipClassName: "border border-sky-100 bg-sky-50 text-sky-700",
       label: "Wet",
-      detail: "2-year weather history.",
+      detail: "Past 2 years.",
       valueText: `${wetDayChance}% wet days`,
     };
   }
@@ -342,7 +342,7 @@ function historyContextTone(wetDayChance: number): GuidanceTone {
       containerClassName: "border-amber-200 bg-amber-50",
       chipClassName: "border border-amber-100 bg-amber-50 text-amber-700",
       label: "Mixed",
-      detail: "2-year weather history.",
+      detail: "Past 2 years.",
       valueText: `${wetDayChance}% wet days`,
     };
   }
@@ -351,7 +351,7 @@ function historyContextTone(wetDayChance: number): GuidanceTone {
     containerClassName: "border-emerald-200 bg-emerald-50",
     chipClassName: "border border-emerald-100 bg-emerald-50 text-emerald-700",
     label: "Drier",
-    detail: "2-year weather history.",
+    detail: "Past 2 years.",
     valueText: `${wetDayChance}% wet days`,
   };
 }
@@ -378,7 +378,7 @@ function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
       containerClassName: "border-sky-200 bg-sky-50",
       chipClassName: "border border-sky-100 bg-sky-50 text-sky-700",
       label: "Wet",
-      detail: secondaryWindow ? "Another forecast for hiking hours." : "Another forecast for this date.",
+      detail: secondaryWindow ? "Second provider, hiking hours." : "Second provider.",
       valueText: formatWindowRainValue(secondaryWindow, details.consensus.secondaryMetrics),
     };
   }
@@ -388,7 +388,7 @@ function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
       containerClassName: "border-amber-200 bg-amber-50",
       chipClassName: "border border-amber-100 bg-amber-50 text-amber-700",
       label: "Mixed",
-      detail: secondaryWindow ? "Another forecast for hiking hours." : "Another forecast for this date.",
+      detail: secondaryWindow ? "Second provider, hiking hours." : "Second provider.",
       valueText: formatWindowRainValue(secondaryWindow, details.consensus.secondaryMetrics),
     };
   }
@@ -397,7 +397,7 @@ function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
     containerClassName: "border-emerald-200 bg-emerald-50",
     chipClassName: "border border-emerald-100 bg-emerald-50 text-emerald-700",
     label: "Dry",
-    detail: secondaryWindow ? "Another forecast for hiking hours." : "Another forecast for this date.",
+    detail: secondaryWindow ? "Second provider, hiking hours." : "Second provider.",
     valueText: formatWindowRainValue(secondaryWindow, details.consensus.secondaryMetrics),
   };
 }
@@ -640,7 +640,7 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
 
       <div className="bg-gradient-to-br from-slate-900 via-sky-900 to-teal-800 px-4 py-5 text-white sm:px-5">
         <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-100">Weather Check</p>
-        <h2 className="mt-2 text-lg font-semibold">Check if your hiking date looks good</h2>
+        <h2 className="mt-2 text-lg font-semibold">Check your hiking date</h2>
         <p className="mt-1 text-sm text-cyan-50/90">
           Result shows hiking recommendation, forecast trust, and simple risk cards for rain, wind, and feels-like.
         </p>
@@ -734,9 +734,7 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
                     <p className={`mt-2 text-lg font-semibold ${metricGuides.rainChance.valueClassName}`}>
                       {result.hikeWindowRain?.precipitationProbability ?? result.metrics.precipitationProbability}%
                     </p>
-                    <p className="mt-1 text-xs text-slate-600">
-                      {result.hikeWindowRain ? "Primary source, hiking-hours only." : metricGuides.rainChance.detail}
-                    </p>
+                    <p className="mt-1 text-xs text-slate-600">{metricGuides.rainChance.detail}</p>
                   </article>
 
                   <article className={`rounded-2xl border px-3 py-3 ${metricGuides.rainAmount.cardClassName}`}>
@@ -749,9 +747,7 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
                     <p className={`mt-2 text-lg font-semibold ${metricGuides.rainAmount.valueClassName}`}>
                       {result.hikeWindowRain?.precipitationSum ?? result.metrics.precipitationSum} mm
                     </p>
-                    <p className="mt-1 text-xs text-slate-600">
-                      {result.hikeWindowRain ? "Primary source, hiking-hours only." : metricGuides.rainAmount.detail}
-                    </p>
+                    <p className="mt-1 text-xs text-slate-600">{metricGuides.rainAmount.detail}</p>
                   </article>
 
                   <article className={`rounded-2xl border px-3 py-3 ${metricGuides.wind.cardClassName}`}>
@@ -836,8 +832,8 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
                     </span>
                     <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Cross-checks</p>
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-slate-950">Second forecast and recent history</p>
-                  <p className="mt-1 text-xs text-slate-600">A second weather check plus recent rain patterns.</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-950">Forecast cross-checks</p>
+                  <p className="mt-1 text-xs text-slate-600">Second forecast and 2-year rain history.</p>
                 </div>
                 <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm">
                   {showMoreDetails ? "Hide" : "Show"}
@@ -908,7 +904,7 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
                       </span>
                     </div>
                     <p className="mt-1 break-words text-xs leading-5 text-slate-700">
-                      These numbers come from the last 2 years of rainfall for this mountain area.
+                        Based on rainfall from the past 2 years.
                     </p>
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <div className="rounded-xl border border-white/90 bg-white/80 px-3 py-2">
