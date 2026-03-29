@@ -6,13 +6,16 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { DifficultyPill } from "@/components/mountains/difficulty-pill";
 import { difficultyBand, difficultyRangeLabel, type DifficultyBand } from "@/lib/difficulty";
-import { getMountainImageObjectPosition } from "@/lib/mountain-image";
+import { getMountainImageLoadingProps, getMountainImageObjectPosition } from "@/lib/mountain-image";
 import { getCommunityTipByMountainId, getTipsByMountainId } from "@/lib/mountains";
 import type { Mountain } from "@/types/hiking";
 
 type Props = {
   mountains: Mountain[];
   regions: string[];
+  initialRegion?: string;
+  initialDifficulty?: "All" | DifficultyBand;
+  initialSortBy?: SortOption;
 };
 
 type SortOption = "difficulty" | "alphabetical" | "elevation" | "popular";
@@ -176,6 +179,7 @@ function finderMenuOptionClassName(isSelected: boolean): string {
 function MountainCard({ mountain, eagerLoad = false }: { mountain: Mountain; eagerLoad?: boolean }) {
   const isPlaceholderImage = mountain.image_url === "/mountains/placeholder.svg";
   const shouldEagerLoad = eagerLoad || isPlaceholderImage;
+  const imageLoadingProps = getMountainImageLoadingProps(shouldEagerLoad);
   const bestMonthsWindow = formatBestMonthsWindow(mountain.best_months);
   const band = difficultyBand(mountain.difficulty_score);
 
@@ -193,8 +197,7 @@ function MountainCard({ mountain, eagerLoad = false }: { mountain: Mountain; eag
           fill
           className="object-cover transition duration-700 group-hover:scale-[1.04]"
           sizes="(max-width: 768px) 100vw, 33vw"
-          loading={shouldEagerLoad ? "eager" : undefined}
-          fetchPriority={eagerLoad ? "high" : "auto"}
+          {...imageLoadingProps}
           quality={70}
           style={{ objectPosition: getMountainImageObjectPosition(mountain.slug) }}
         />
@@ -256,12 +259,18 @@ function MountainCard({ mountain, eagerLoad = false }: { mountain: Mountain; eag
   );
 }
 
-export function MountainListClient({ mountains, regions }: Props) {
+export function MountainListClient({
+  mountains,
+  regions,
+  initialRegion = "All",
+  initialDifficulty = "All",
+  initialSortBy = "popular",
+}: Props) {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [region, setRegion] = useState("All");
-  const [difficulty, setDifficulty] = useState<"All" | DifficultyBand>("All");
-  const [sortBy, setSortBy] = useState<SortOption>("popular");
+  const [region, setRegion] = useState(initialRegion);
+  const [difficulty, setDifficulty] = useState<"All" | DifficultyBand>(initialDifficulty);
+  const [sortBy, setSortBy] = useState<SortOption>(initialSortBy);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showRegionMenu, setShowRegionMenu] = useState(false);
   const [showDifficultyMenu, setShowDifficultyMenu] = useState(false);

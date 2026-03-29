@@ -10,10 +10,11 @@ import type { ReactNode } from "react";
 import { RecommendationPill } from "@/components/mountains/recommendation-pill";
 import { differenceInDays, formatISODate, isValidDate } from "@/lib/date";
 import { difficultyBand } from "@/lib/difficulty";
-import { getMountainImageObjectPosition } from "@/lib/mountain-image";
+import { getMountainImageLoadingProps, getMountainImageObjectPosition } from "@/lib/mountain-image";
 import { getWeatherClientCache, setWeatherClientCache } from "@/lib/weather/client-cache";
+import { formatRainValueCompact, formatReadableDate, formatWindowRainValue, historySummary, rainAmountLabel } from "@/lib/weather/presentation";
 import { getSelectedReliability } from "@/lib/weather/reliability";
-import type { HikeWindowRainMetrics, WeatherCheckDetails, WeatherCheckResult } from "@/types/hiking";
+import type { WeatherCheckDetails, WeatherCheckResult } from "@/types/hiking";
 
 type PlannerMountain = {
   id: string;
@@ -170,19 +171,6 @@ function ThermometerIcon() {
       <path d="M10 8.2v4.2" />
     </svg>
   );
-}
-
-function formatReadableDate(value: string): string {
-  if (!isValidDate(value)) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    day: "2-digit",
-    year: "numeric",
-    timeZone: "Asia/Manila",
-  }).format(new Date(`${value}T00:00:00`));
 }
 
 function normalizeMountainSearch(value: string): string {
@@ -348,22 +336,6 @@ function rainAmountTone(value: number): MetricTone {
   };
 }
 
-function rainAmountLabel(value: number): string {
-  if (value <= 0) {
-    return "None";
-  }
-
-  if (value >= 8) {
-    return "Heavy";
-  }
-
-  if (value >= 2) {
-    return "Moderate";
-  }
-
-  return "Light";
-}
-
 function windTone(value: number): MetricTone {
   if (value >= 35) {
     return {
@@ -439,41 +411,6 @@ function feelsLikeTone(value: number): MetricTone {
     valueClassName: "text-sky-950",
     accentClassName: "bg-sky-500",
   };
-}
-
-function historySummary(details: WeatherCheckDetails): string {
-  if (details.history.targetMonthWetDayChance >= 55) {
-    return "Over the last 2 years, this month was often wet.";
-  }
-
-  if (details.history.targetMonthWetDayChance >= 35) {
-    return "Over the last 2 years, this month had mixed wet and dry days.";
-  }
-
-  return "Over the last 2 years, this month was mostly drier.";
-}
-
-function formatWindowRainValue(
-  metrics: HikeWindowRainMetrics | null | undefined,
-  fallback?: { precipitationProbability: number; precipitationSum: number } | null,
-): string {
-  if (!metrics) {
-    if (fallback) {
-      return `${fallback.precipitationProbability}% chance, ${fallback.precipitationSum} mm`;
-    }
-
-    return "Window rain unavailable";
-  }
-
-  return `${metrics.label}: ${metrics.precipitationProbability}% chance, ${metrics.precipitationSum} mm`;
-}
-
-function formatRainValueCompact(metrics: HikeWindowRainMetrics | null | undefined): string {
-  if (!metrics) {
-    return "Unavailable";
-  }
-
-  return `${metrics.precipitationProbability}% chance, ${metrics.precipitationSum} mm`;
 }
 
 function historyContextTone(wetDayChance: number): GuidanceTone {
@@ -1476,6 +1413,7 @@ export function HomePlannerClient({ mountains, initialDate }: Props) {
                     sizes="(max-width: 1280px) 100vw, 380px"
                     quality={70}
                     className="object-cover"
+                    {...getMountainImageLoadingProps(true)}
                     style={{ objectPosition: getMountainImageObjectPosition(selectedMountain.slug) }}
                   />
                   <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.06),rgba(15,23,42,0.68))]" />

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 
-import { HomePlannerClient } from "@/components/mountains/home-planner-client";
+import { HomePlannerQueryBridge } from "@/components/mountains/home-planner-query-bridge";
+import { HomePlannerShell } from "@/components/mountains/home-planner-shell";
 import { getMountainBySlug, getMountains, getRegions } from "@/lib/mountains";
 import {
   DEFAULT_OG_IMAGE_PATH,
@@ -10,18 +12,21 @@ import {
   SITE_LOGO_PATH,
   SITE_NAME,
   absoluteUrl,
+  getHomeMetaDescription,
+  getHomeSearchKeywords,
   serializeJsonLd,
 } from "@/lib/seo";
 
 const mountains = getMountains();
 const regionNames = getRegions();
 const mountainCount = mountains.length;
-const featuredMountains = ["mt-ulap", "mt-pulag", "mt-apo", "mt-daraitan", "mt-batulao", "mt-pico-de-loro"].flatMap((slug) => {
+const featuredMountains = ["mt-ulap", "mt-pulag", "mt-apo", "mt-daraitan"].flatMap((slug) => {
   const mountain = getMountainBySlug(slug);
   return mountain ? [mountain] : [];
 });
 const homeTitle = "Philippines Hiking Weather Planner and Mountain Guides";
-const homeDescription = `Plan safer hikes in the Philippines with date-based weather checks, forecast reliability, and mountain guides for ${mountainCount} mountains across ${regionNames.join(", ")}.`;
+const homeDescription = getHomeMetaDescription(mountainCount, regionNames);
+const homeKeywords = getHomeSearchKeywords(featuredMountains.map((mountain) => mountain.name));
 const plannerMountains = mountains.map((mountain) => ({
   id: mountain.id,
   name: mountain.name,
@@ -42,6 +47,7 @@ const plannerMountains = mountains.map((mountain) => ({
 export const metadata: Metadata = {
   title: homeTitle,
   description: homeDescription,
+  keywords: homeKeywords,
   alternates: {
     canonical: "/",
   },
@@ -67,13 +73,7 @@ export const metadata: Metadata = {
   },
 };
 
-type Props = {
-  searchParams?: Promise<{ date?: string }>;
-};
-
-export default async function Home({ searchParams }: Props) {
-  const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const initialDate = resolvedSearchParams?.date;
+export default function Home() {
   const faqs = [
     {
       question: "Anong ginagawa ng Tara Akyat?",
@@ -84,20 +84,20 @@ export default async function Home({ searchParams }: Props) {
       answer: "Yes. You can check multiple mountains like Mt. Pulag, Mt. Apo, Mt. Daraitan, Mt. Batulao, and many more. The site is meant for broad Philippine mountain weather checking, not just one trail.",
     },
     {
+      question: "Kung search ko ay 'uulan ba bukas' or 'safe ba mag-hike bukas', bagay ba ito dito?",
+      answer: "Yes. Pick your mountain and target date first, then use the result as your hike-specific answer. That is more useful than a generic city forecast because mountain conditions can change fast with elevation, wind, and local rain patterns.",
+    },
+    {
+      question: "Puwede ba akong mag-check ng date sa Mt. Ulap, Mt. Pulag, o ibang bundok sa app?",
+      answer: "Yes. Choose any supported mountain, then set your target date to check that specific hike day. This works for Mt. Ulap, Mt. Pulag, Mt. Apo, Mt. Batulao, Mt. Daraitan, and the rest of the mountain list in the app.",
+    },
+    {
       question: "Kailan pinaka-useful mag-check ng hiking weather?",
       answer: "The most useful time is usually a few days before your hike, when day-level forecasts are more reliable. For far-ahead dates, use the result as planning guidance and recheck closer to the actual climb.",
     },
     {
-      question: "Anong Tagalog or Taglish searches ang bagay sa site na ito?",
-      answer: "Common searches include: uulan ba sa bundok, weather check bago mag-hike, maulan ba sa Mt. Pulag, weather sa bundok ngayon, and puwede ba mag-hike bukas.",
-    },
-    {
       question: "Best months for hiking sa Pilipinas?",
       answer: "It depends on the mountain, region, and season. Each mountain page includes best months to hike, but you should still check the actual weather forecast for your target date before going.",
-    },
-    {
-      question: "Useful ba ito for beginners?",
-      answer: "Yes. Beginners can use the site to compare easier mountains, see basic weather risk signals, and avoid obviously bad weather before choosing a beginner-friendly hike.",
     },
   ] as const;
 
@@ -131,6 +131,11 @@ export default async function Home({ searchParams }: Props) {
                 description: homeDescription,
                 inLanguage: "en-PH",
                 url: absoluteUrl("/"),
+                about: [
+                  absoluteUrl("/about"),
+                  absoluteUrl("/methodology"),
+                  absoluteUrl("/sources"),
+                ],
                 publisher: {
                   "@id": absoluteUrl("/#organization"),
                 },
@@ -215,39 +220,59 @@ export default async function Home({ searchParams }: Props) {
           </div>
         </section>
         <section id="planner" className="scroll-mt-28 sm:scroll-mt-32">
-          <HomePlannerClient mountains={plannerMountains} initialDate={initialDate} />
+          <Suspense fallback={<HomePlannerShell mountainCount={plannerMountains.length} />}>
+            <HomePlannerQueryBridge mountains={plannerMountains} />
+          </Suspense>
         </section>
-        <section className="mt-5 grid gap-3 lg:grid-cols-3">
+        <section className="mt-5 grid gap-3 lg:grid-cols-2">
           <article className="rounded-[22px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
-            <h2 className="text-base font-semibold tracking-tight text-slate-950">Check hiking weather by date</h2>
+            <h2 className="text-base font-semibold tracking-tight text-slate-950">How to use the checker</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Compare rain chance, wind, and temperature for your target hike date before you commit to the trip.
+              Pick your mountain, set the target date, then compare rain chance, wind, and temperature before you commit to the trip.
             </p>
           </article>
           <article className="rounded-[22px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
-            <h2 className="text-base font-semibold tracking-tight text-slate-950">Use forecast reliability, not just a score</h2>
+            <h2 className="text-base font-semibold tracking-tight text-slate-950">Read the forecast with context</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              The planner explains whether your selected date is close enough for a more dependable forecast or better treated as advance guidance.
+              The planner explains whether your selected date is close enough for a dependable forecast or better treated as advance planning guidance.
             </p>
           </article>
-          <article className="rounded-[22px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
-            <h2 className="text-base font-semibold tracking-tight text-slate-950">Open full mountain guides</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Every mountain page includes location, elevation, best months, difficulty, photo references, and curated hiking tips.
-            </p>
-          </article>
+        </section>
+        <section className="mt-5 rounded-[22px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)] sm:px-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">Need more than the weather?</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Open a full mountain guide for best months, difficulty, references, and trip-planning context.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/mountains"
+                className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-300 hover:bg-white"
+              >
+                Browse mountain guides
+              </Link>
+              <Link
+                href="/methodology"
+                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+              >
+                How forecasts work
+              </Link>
+            </div>
+          </div>
         </section>
         <section className="mt-5 rounded-[22px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)] sm:px-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">Popular Guides</p>
-              <h2 className="mt-1 text-base font-semibold tracking-tight text-slate-950 sm:text-lg">Popular Philippine mountain guides to start with</h2>
+              <h2 className="mt-1 text-base font-semibold tracking-tight text-slate-950 sm:text-lg">Popular mountain guides to open next</h2>
             </div>
             <Link href="/mountains" className="text-sm font-semibold text-sky-700 transition hover:text-sky-800">
               Browse all {mountainCount} mountains
             </Link>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {featuredMountains.map((mountain) => (
               <Link
                 key={mountain.id}

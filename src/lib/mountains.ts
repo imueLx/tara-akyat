@@ -18,6 +18,10 @@ export function getTipsByMountainId(mountainId: string): TipSource[] {
   return typedTips.filter((tip) => tip.mountain_id === mountainId);
 }
 
+export function getTips(): TipSource[] {
+  return typedTips;
+}
+
 export function getCommunityTipByMountainId(mountainId: string): TipSource | undefined {
   return typedTips.find((tip) => tip.mountain_id === mountainId && tip.source_type === "reddit");
 }

@@ -16,12 +16,14 @@ describe("GET /api/weather/check", () => {
   });
 
   it("returns forecast recommendation for valid date", async () => {
+    const targetDate = formatISODate(addDays(new Date(), 1));
+
     vi.spyOn(global, "fetch")
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
             daily: {
-              time: ["2026-03-24"],
+              time: [targetDate],
               weather_code: [1],
               precipitation_sum: [0],
               precipitation_probability_max: [10],
@@ -36,7 +38,7 @@ describe("GET /api/weather/check", () => {
         new Response(
           JSON.stringify({
             hourly: {
-              time: ["2026-03-24T04:00", "2026-03-24T10:00", "2026-03-24T16:00"],
+              time: [`${targetDate}T04:00`, `${targetDate}T10:00`, `${targetDate}T16:00`],
               precipitation: [0, 0, 0],
               precipitation_probability: [0, 0, 0],
             },
@@ -44,7 +46,7 @@ describe("GET /api/weather/check", () => {
         ),
       );
 
-    const request = new NextRequest("http://localhost/api/weather/check?lat=16.6&lon=120.9&date=2026-03-24");
+    const request = new NextRequest(`http://localhost/api/weather/check?lat=16.6&lon=120.9&date=${targetDate}`);
     const response = await GET(request);
     const body = (await response.json()) as {
       mode: string;

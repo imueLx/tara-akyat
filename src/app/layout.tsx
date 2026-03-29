@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Chivo, JetBrains_Mono } from "next/font/google";
 
 import { AppTopNav } from "@/components/app-top-nav";
+import { SiteFooter } from "@/components/site-footer";
 import { DEFAULT_OG_IMAGE_PATH, SITE_DESCRIPTION, SITE_LOCALE, SITE_LOGO_PATH, SITE_NAME, getBaseUrl } from "@/lib/seo";
 import { getThemeBootstrapScript } from "@/lib/theme";
 
@@ -91,7 +92,8 @@ export default function RootLayout({
           }}
         />
         <AppTopNav />
-        {children}
+        <div className="min-h-[calc(100vh-4rem)]">{children}</div>
+        <SiteFooter />
       </body>
     </html>
   );

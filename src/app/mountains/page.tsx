@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { MountainListClient } from "@/components/mountains/mountain-list-client";
 import { getMountains, getRegions } from "@/lib/mountains";
@@ -98,29 +97,7 @@ export default function MountainsBrowsePage() {
           }),
         }}
       />
-      <main className="mx-auto max-w-6xl px-3 pt-3 sm:px-6 sm:pt-5">
-        <nav aria-label="Breadcrumb" className="mb-3 text-sm text-slate-500">
-          <ol className="flex flex-wrap items-center gap-2">
-            <li>
-              <Link href="/" className="transition hover:text-slate-800">
-                Home
-              </Link>
-            </li>
-            <li aria-hidden="true">/</li>
-            <li aria-current="page" className="text-slate-800">
-              Mountains
-            </li>
-          </ol>
-        </nav>
-        <section className="rounded-2xl border border-slate-200 bg-white px-4 py-4 sm:px-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">Mountain Guides</p>
-          <h1 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Browse Philippine mountain guides</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            Explore {mountainCount} mountains across {regions.join(", ")}. Filter by region and difficulty, then open full guides with weather planning support, best months, and trail summaries.
-          </p>
-        </section>
-      </main>
-      <MountainListClient mountains={mountains} regions={regions} />
+      <MountainListClient mountains={mountains} regions={regions} initialRegion="Luzon" initialDifficulty="Beginner" initialSortBy="popular" />
     </div>
   );
 }

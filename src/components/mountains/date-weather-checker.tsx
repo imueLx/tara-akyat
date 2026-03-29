@@ -5,8 +5,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RecommendationPill } from "@/components/mountains/recommendation-pill";
 import { addDays, differenceInDays, formatISODate, isValidDate } from "@/lib/date";
 import { getWeatherClientCache, setWeatherClientCache } from "@/lib/weather/client-cache";
+import { formatRainValueCompact, formatReadableDate, formatWindowRainValue, historySummary, rainAmountLabel } from "@/lib/weather/presentation";
 import { getSelectedReliability } from "@/lib/weather/reliability";
-import type { HikeWindowRainMetrics, WeatherCheckDetails, WeatherCheckResult } from "@/types/hiking";
+import type { WeatherCheckDetails, WeatherCheckResult } from "@/types/hiking";
 
 type Props = {
   lat: number;
@@ -82,19 +83,6 @@ function resultMessage(result: WeatherCheckResult): string {
   return "Risk looks high. Postponing is safer.";
 }
 
-function formatReadableDate(value: string): string {
-  if (!isValidDate(value)) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    day: "2-digit",
-    year: "numeric",
-    timeZone: "Asia/Manila",
-  }).format(new Date(`${value}T00:00:00`));
-}
-
 function forecastTrustLabel(result: WeatherCheckResult): string {
   if (result.reliability.estimatedAccuracy >= 85) {
     return "High trust";
@@ -129,41 +117,6 @@ function reliabilityPlainLanguage(result: WeatherCheckResult): string {
   }
 
   return "Use this only as advance guidance. Recheck again near your hike date.";
-}
-
-function historySummary(details: WeatherCheckDetails): string {
-  if (details.history.targetMonthWetDayChance >= 55) {
-    return "Over the last 2 years, this month was often wet.";
-  }
-
-  if (details.history.targetMonthWetDayChance >= 35) {
-    return "Over the last 2 years, this month had mixed wet and dry days.";
-  }
-
-  return "Over the last 2 years, this month was mostly drier.";
-}
-
-function formatWindowRainValue(
-  metrics: HikeWindowRainMetrics | null | undefined,
-  fallback?: { precipitationProbability: number; precipitationSum: number } | null,
-): string {
-  if (!metrics) {
-    if (fallback) {
-      return `${fallback.precipitationProbability}% chance, ${fallback.precipitationSum} mm`;
-    }
-
-    return "Window rain unavailable";
-  }
-
-  return `${metrics.label}: ${metrics.precipitationProbability}% chance, ${metrics.precipitationSum} mm`;
-}
-
-function formatRainValueCompact(metrics: HikeWindowRainMetrics | null | undefined): string {
-  if (!metrics) {
-    return "Unavailable";
-  }
-
-  return `${metrics.precipitationProbability}% chance, ${metrics.precipitationSum} mm`;
 }
 
 function compactReasons(result: WeatherCheckResult): string[] {
@@ -238,22 +191,6 @@ function rainAmountTone(value: number): MetricTone {
     pillClassName: "bg-emerald-100 text-emerald-800",
     valueClassName: "text-emerald-900",
   };
-}
-
-function rainAmountLabel(value: number): string {
-  if (value <= 0) {
-    return "None";
-  }
-
-  if (value >= 8) {
-    return "Heavy";
-  }
-
-  if (value >= 2) {
-    return "Moderate";
-  }
-
-  return "Light";
 }
 
 function windTone(value: number): MetricTone {

@@ -185,4 +185,91 @@ describe("MountainListClient", () => {
       expect(screen.queryByText("Mt. Ulap")).not.toBeInTheDocument();
     });
   });
+
+  it("supports lighter first-load defaults from props", async () => {
+    render(
+      <MountainListClient
+        mountains={mountains}
+        regions={["Luzon", "Mindanao"]}
+        initialRegion="Luzon"
+        initialDifficulty="Beginner"
+        initialSortBy="popular"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Mt. Batulao")).toBeInTheDocument();
+      expect(screen.getByText("Mt. Ulap")).toBeInTheDocument();
+      expect(screen.queryByText("Mt. Apo")).not.toBeInTheDocument();
+    });
+  });
+
+  it("still lets users change region after the lighter first-load defaults", async () => {
+    render(
+      <MountainListClient
+        mountains={mountains}
+        regions={["Luzon", "Mindanao"]}
+        initialRegion="Luzon"
+        initialDifficulty="Beginner"
+        initialSortBy="popular"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filter by region" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Mindanao" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Mt. Ulap")).not.toBeInTheDocument();
+      expect(screen.queryByText("Mt. Batulao")).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Filter by difficulty" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "All difficulty groups" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Mt. Apo")).toBeInTheDocument();
+    });
+  });
+
+  it("still lets users change sort after the lighter first-load defaults", async () => {
+    render(
+      <MountainListClient
+        mountains={mountains}
+        regions={["Luzon", "Mindanao"]}
+        initialRegion="Luzon"
+        initialDifficulty="Beginner"
+        initialSortBy="popular"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Sort mountains" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Alphabetical" }));
+
+    expect(screen.getByRole("heading", { level: 2, name: "Alphabetical browse" })).toBeInTheDocument();
+
+    const mountainLinks = screen.getAllByRole("link", { name: /View .* guide/i });
+    expect(mountainLinks[0]).toHaveAttribute("href", "/mountains/mt-batulao");
+    expect(mountainLinks[1]).toHaveAttribute("href", "/mountains/mt-ulap");
+  });
+
+  it("still lets search narrow results after the lighter first-load defaults", async () => {
+    render(
+      <MountainListClient
+        mountains={mountains}
+        regions={["Luzon", "Mindanao"]}
+        initialRegion="Luzon"
+        initialDifficulty="Beginner"
+        initialSortBy="popular"
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Search mountains"), {
+      target: { value: "Ulap" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Mt. Ulap")).toBeInTheDocument();
+      expect(screen.queryByText("Mt. Batulao")).not.toBeInTheDocument();
+    });
+  });
 });

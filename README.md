@@ -53,3 +53,7 @@ npm run lint
 npm run test
 npm run build
 ```
+
+## Production release
+
+Use [PRODUCTION_CHECKLIST.md](./PRODUCTION_CHECKLIST.md) for the live deploy, crawl/index checks, and Google Search Console follow-up.

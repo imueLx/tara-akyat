@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { getMountainImageLoadingProps } from "@/lib/mountain-image";
+
 type Props = {
   name: string;
   imageUrl: string;
@@ -115,6 +117,7 @@ export function MountainPhotoLightbox({ name, imageUrl, imageSourceUrl, objectPo
           className="object-cover transition duration-300 group-hover:scale-[1.02]"
           sizes="(max-width: 768px) 100vw, 960px"
           quality={75}
+          {...getMountainImageLoadingProps(true)}
           style={{ objectPosition }}
         />
         <div className="pointer-events-none absolute inset-0 bg-slate-950/0 transition duration-300 group-hover:bg-slate-950/8" />
@@ -156,6 +159,7 @@ export function MountainPhotoLightbox({ name, imageUrl, imageSourceUrl, objectPo
                 className="object-contain"
                 sizes="100vw"
                 quality={80}
+                {...getMountainImageLoadingProps(false)}
               />
             </div>
 
