@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { BestDaysQuerySchema, parseQuery } from "@/lib/api/schemas";
 import { createRateLimitHeaders, checkWeatherRouteRateLimit } from "@/lib/weather/rate-limit";
 import { createWeatherResponseHeaders, getWeatherRouteElapsedMs, logWeatherRouteTiming, normalizeWeatherRouteError } from "@/lib/weather/route-utils";
-import { getBestDays, parseCoordinates } from "@/lib/weather/service";
+import { getBestDays } from "@/lib/weather/service";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const startedAtMs = Date.now();
@@ -23,13 +24,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return response;
   }
 
-  const params = request.nextUrl.searchParams;
-  const coordinates = parseCoordinates(params.get("lat"), params.get("lon"));
-  const days = Number(params.get("days") ?? "7");
+  const query = parseQuery(BestDaysQuerySchema, request.nextUrl.searchParams);
 
-  if (!coordinates || !Number.isFinite(days)) {
+  if (!query.ok) {
     const response = NextResponse.json(
-      { error: "Missing or invalid lat/lon/days query params." },
+      { error: query.message },
       {
         status: 400,
         headers: {
@@ -43,7 +42,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const result = await getBestDays(coordinates.lat, coordinates.lon, days);
+    const result = await getBestDays(query.data.lat, query.data.lon, query.data.days);
     const response = NextResponse.json(result, {
       headers: {
         ...createWeatherResponseHeaders(

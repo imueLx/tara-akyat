@@ -8,10 +8,12 @@ import { DateWeatherQueryBridge } from "@/components/mountains/date-weather-quer
 import { DifficultyPill } from "@/components/mountains/difficulty-pill";
 import { MountainPhotoLightbox } from "@/components/mountains/mountain-photo-lightbox";
 import { TipsList } from "@/components/mountains/tips-list";
+import { FaqSection } from "@/components/seo/faq-section";
 import { getMountainImageObjectPosition } from "@/lib/mountain-image";
 import {
   buildMountainJsonLd,
   formatMountainMonthWindow,
+  getMountainFaqs,
   sortMountainBestMonths,
 } from "@/lib/mountain-page-content";
 import { getMountainBySlug, getMountains, getTipsByMountainId } from "@/lib/mountains";
@@ -36,7 +38,6 @@ export async function generateMetadata({ params }: Pick<PageProps<"/mountains/[s
   }
 
   const pageUrl = `/mountains/${mountain.slug}`;
-  const imageUrl = mountain.image_url || DEFAULT_OG_IMAGE_PATH;
   const description = getMountainMetaDescription(mountain);
   const pageTitle = `${mountain.name} Hiking Guide and Weather Planner`;
 
@@ -53,20 +54,11 @@ export async function generateMetadata({ params }: Pick<PageProps<"/mountains/[s
       title: `${pageTitle} | ${SITE_NAME}`,
       description,
       url: pageUrl,
-      images: [
-        {
-          url: imageUrl,
-          width: 1200,
-          height: 630,
-          alt: mountain.name,
-        },
-      ],
     },
     twitter: {
       card: "summary_large_image",
       title: `${pageTitle} | ${SITE_NAME}`,
       description,
-      images: [imageUrl],
     },
   };
 }
@@ -80,6 +72,7 @@ export default async function MountainPage({ params }: PageProps<"/mountains/[sl
   }
 
   const tips = getTipsByMountainId(mountain.id);
+  const faqs = getMountainFaqs(mountain);
   const orderedBestMonths = sortMountainBestMonths(mountain.best_months);
   const bestWindow = formatMountainMonthWindow(orderedBestMonths);
   const pageUrl = absoluteUrl(`/mountains/${mountain.slug}`);
@@ -121,7 +114,7 @@ export default async function MountainPage({ params }: PageProps<"/mountains/[sl
           __html: serializeJsonLd(
             buildMountainJsonLd({
               mountain,
-              faqs: [],
+              faqs,
               homeUrl,
               imageUrl,
               pageDescription,
@@ -230,6 +223,11 @@ export default async function MountainPage({ params }: PageProps<"/mountains/[sl
           Use the forecast on this page for the exact hike date, then check the methodology and sources if you want the deeper details behind the guidance.
         </p>
       </section>
+      <FaqSection
+        title={`${mountain.name} hiking weather FAQ`}
+        description="Common questions about checking the weather before your hike."
+        faqs={faqs}
+      />
     </main>
   );
 }

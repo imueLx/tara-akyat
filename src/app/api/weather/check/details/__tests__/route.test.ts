@@ -88,17 +88,6 @@ describe("GET /api/weather/check/details", () => {
                 precipprob: 5,
                 windspeed: 10,
                 conditions: "Clear",
-              },
-            ],
-          }),
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            days: [
-              {
-                datetime: targetDate,
                 hours: [
                   { datetime: "04:00:00", precip: 0, precipprob: 5 },
                   { datetime: "10:00:00", precip: 0, precipprob: 5 },
@@ -130,6 +119,7 @@ describe("GET /api/weather/check/details", () => {
     const body = (await response.json()) as {
       consensus: {
         secondaryAvailable: boolean;
+        primaryRecommendation: string | null;
         secondaryRecommendation: string | null;
         agreement: string;
       };
@@ -138,6 +128,7 @@ describe("GET /api/weather/check/details", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Server-Timing")).toMatch(/app;dur=/);
     expect(body.consensus.secondaryAvailable).toBe(true);
+    expect(body.consensus.primaryRecommendation).toBe("Good");
     expect(body.consensus.secondaryRecommendation).toBe("Good");
     expect(body.consensus.agreement).toBe("aligned");
   });

@@ -15,6 +15,17 @@ describe("GET /api/weather/check", () => {
     expect(response.status).toBe(400);
   });
 
+  it("returns 400 (not 502) for a malformed date without calling upstream", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch");
+    const request = new NextRequest("http://localhost/api/weather/check?lat=16.6&lon=120.9&date=2026-13-40");
+    const response = await GET(request);
+    const body = (await response.json()) as { error: string };
+
+    expect(response.status).toBe(400);
+    expect(body.error).toContain("date");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("returns forecast recommendation for valid date", async () => {
     const targetDate = formatISODate(addDays(new Date(), 1));
 

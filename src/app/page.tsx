@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { PageShell } from "@/components/layout/page-primitives";
 import { HomePlannerQueryBridge } from "@/components/mountains/home-planner-query-bridge";
 import { HomePlannerShell } from "@/components/mountains/home-planner-shell";
+import { FaqSection } from "@/components/seo/faq-section";
 import { getMountainBySlug, getMountains, getRegions } from "@/lib/mountains";
 import {
-  DEFAULT_OG_IMAGE_PATH,
   SITE_ALTERNATE_NAME,
   SITE_DESCRIPTION,
   SITE_LOGO_PATH,
@@ -56,20 +57,11 @@ export const metadata: Metadata = {
     title: `${homeTitle} | ${SITE_NAME}`,
     description: homeDescription,
     url: "/",
-    images: [
-      {
-        url: DEFAULT_OG_IMAGE_PATH,
-        width: 1200,
-        height: 630,
-        alt: "Tara Akyat weather checker for Philippine mountains",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: `${homeTitle} | ${SITE_NAME}`,
     description: homeDescription,
-    images: [DEFAULT_OG_IMAGE_PATH],
   },
 };
 
@@ -102,7 +94,7 @@ export default function Home() {
   ] as const;
 
   return (
-    <div className="min-h-screen pb-10">
+    <PageShell className="pb-10">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -194,118 +186,77 @@ export default function Home() {
           }),
         }}
       />
-      <main className="mx-auto max-w-6xl px-3 pt-3 sm:px-5 sm:pt-5 md:px-6 md:pt-6">
-        <section className="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 sm:px-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">{SITE_NAME}</p>
-          <h1 className="mt-2 text-xl font-semibold text-slate-950 sm:text-2xl">Philippines hiking weather planner</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            Plan safer hikes with date-based weather checks, forecast reliability, and mountain guides for {mountainCount} mountains across {regionNames.join(", ")}.
+
+      <div className="mb-6 rounded-[24px] border border-border bg-card/90 px-4 py-5 shadow-[0_12px_28px_rgba(15,23,42,0.04)] sm:px-6 sm:py-6">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-700">Tara Akyat</p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          Philippines hiking weather planner
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-[15px]">
+          Plan safer hikes across {regionNames.join(", ")}. Search a mountain, pick your date, and get a hike-specific weather read before you go.
+        </p>
+      </div>
+
+      <Suspense fallback={<HomePlannerShell mountainCount={plannerMountains.length} />}>
+        <HomePlannerQueryBridge mountains={plannerMountains} />
+      </Suspense>
+
+      <section className="mt-6 grid gap-3 lg:grid-cols-3">
+        <article className="rounded-[22px] border border-border bg-card px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">How it works</p>
+          <h2 className="mt-1 text-base font-semibold tracking-tight text-foreground">Search, date, check</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Use the mountain finder above, set your hike date, then compare rain, wind, and temperature for that specific trail day.
           </p>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            Need a quick answer to &quot;Uulan ba sa bundok?&quot; Pick a mountain and date below, then open the full guide for best hiking months, difficulty, and trip notes.
+        </article>
+        <article className="rounded-[22px] border border-border bg-card px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Forecast trust</p>
+          <h2 className="mt-1 text-base font-semibold tracking-tight text-foreground">Know what the date means</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Near-term dates are better for go or no-go calls. Farther dates shift into planning outlook and historical context.
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <a
-              href="#planner"
-              className="inline-flex items-center rounded-full bg-slate-950 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Start weather check
-            </a>
+        </article>
+        <article className="rounded-[22px] border border-border bg-card px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+          <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Mountain guides</p>
+          <h2 className="mt-1 text-base font-semibold tracking-tight text-foreground">Go deeper before the trip</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Open full guides for best months, difficulty, references, and trail notes after you shortlist a mountain.
+          </p>
+        </article>
+      </section>
+
+      <section className="mt-5 rounded-[22px] border border-border bg-card px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)] sm:px-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Popular guides</p>
+            <h2 className="mt-1 text-base font-semibold tracking-tight text-foreground sm:text-lg">Start with a well-known climb</h2>
+          </div>
+          <Link href="/mountains" className="text-sm font-semibold text-sky-700 transition hover:text-sky-800">
+            Browse all {mountainCount} mountains
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {featuredMountains.map((mountain) => (
             <Link
-              href="/mountains"
-              className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-300 hover:bg-white"
+              key={mountain.id}
+              href={`/mountains/${mountain.slug}`}
+              className="rounded-[18px] border border-border bg-secondary/30 px-4 py-4 transition hover:border-sky-200 hover:bg-sky-50/50"
             >
-              Browse all mountain guides
-            </Link>
-          </div>
-        </section>
-        <section id="planner" className="scroll-mt-28 sm:scroll-mt-32">
-          <Suspense fallback={<HomePlannerShell mountainCount={plannerMountains.length} />}>
-            <HomePlannerQueryBridge mountains={plannerMountains} />
-          </Suspense>
-        </section>
-        <section className="mt-5 grid gap-3 lg:grid-cols-2">
-          <article className="rounded-[22px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
-            <h2 className="text-base font-semibold tracking-tight text-slate-950">How to use the checker</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Pick your mountain, set the target date, then compare rain chance, wind, and temperature before you commit to the trip.
-            </p>
-          </article>
-          <article className="rounded-[22px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
-            <h2 className="text-base font-semibold tracking-tight text-slate-950">Read the forecast with context</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              The planner explains whether your selected date is close enough for a dependable forecast or better treated as advance planning guidance.
-            </p>
-          </article>
-        </section>
-        <section className="mt-5 rounded-[22px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)] sm:px-5">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">Need more than the weather?</p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
-                Open a full mountain guide for best months, difficulty, references, and trip-planning context.
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                {mountain.province}, {mountain.region}
               </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="/mountains"
-                className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-300 hover:bg-white"
-              >
-                Browse mountain guides
-              </Link>
-              <Link
-                href="/methodology"
-                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
-              >
-                How forecasts work
-              </Link>
-            </div>
-          </div>
-        </section>
-        <section className="mt-5 rounded-[22px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)] sm:px-5">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">Popular Guides</p>
-              <h2 className="mt-1 text-base font-semibold tracking-tight text-slate-950 sm:text-lg">Popular mountain guides to open next</h2>
-            </div>
-            <Link href="/mountains" className="text-sm font-semibold text-sky-700 transition hover:text-sky-800">
-              Browse all {mountainCount} mountains
+              <h3 className="mt-2 text-base font-semibold tracking-tight text-foreground">{mountain.name}</h3>
+              <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">{mountain.summary}</p>
             </Link>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {featuredMountains.map((mountain) => (
-              <Link
-                key={mountain.id}
-                href={`/mountains/${mountain.slug}`}
-                className="rounded-[18px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-4 transition hover:border-slate-300 hover:bg-white"
-              >
-                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                  {mountain.province}, {mountain.region}
-                </p>
-                <h3 className="mt-2 text-base font-semibold tracking-tight text-slate-950">{mountain.name}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{mountain.summary}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-        <section className="mt-5 rounded-[22px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)] sm:px-5">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">FAQ</p>
-              <h2 className="mt-1 text-base font-semibold tracking-tight text-slate-950 sm:text-lg">Quick hiking weather FAQ</h2>
-            </div>
-            <p className="text-sm text-slate-500">Short answers for common trip-planning questions.</p>
-          </div>
-          <div className="mt-4 space-y-2.5">
-            {faqs.map((faq) => (
-              <details key={faq.question} className="rounded-[18px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-3.5">
-                <summary className="cursor-pointer text-sm font-semibold text-slate-900">{faq.question}</summary>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{faq.answer}</p>
-              </details>
-            ))}
-          </div>
-        </section>
-      </main>
-    </div>
+          ))}
+        </div>
+      </section>
+
+      <FaqSection
+        title="Quick hiking weather FAQ"
+        description="Short answers for common trip-planning questions."
+        faqs={faqs}
+      />
+    </PageShell>
   );
 }

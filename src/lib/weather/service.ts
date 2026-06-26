@@ -8,9 +8,10 @@ import {
   fetchOpenMeteoHikeWindowRain,
   fetchTwoYearHistoryCrosscheck,
 } from "@/lib/weather/open-meteo";
+import { applyHikeWindowRainToMetrics } from "@/lib/weather/metrics";
 import { buildReliabilityMessage, getSelectedReliability, RELIABILITY_TIERS } from "@/lib/weather/reliability";
 import { confidenceFromDaysAhead, scoreDay } from "@/lib/weather/scoring";
-import { fetchVisualCrossingDay, fetchVisualCrossingHikeWindowRain, hasVisualCrossingKey } from "@/lib/weather/visual-crossing";
+import { fetchVisualCrossingForecast, hasVisualCrossingKey } from "@/lib/weather/visual-crossing";
 import type { ScoredDay, WeatherCheckDetails, WeatherCheckResult } from "@/types/hiking";
 
 export const MAX_FORECAST_DAYS = 15;
@@ -27,40 +28,6 @@ function normalizeCoordinate(value: number): string {
 
 function shouldBypassAppCache(): boolean {
   return process.env.NODE_ENV === "test";
-}
-
-function applyHikeWindowRainToMetrics<T extends { precipitationProbability: number; precipitationSum: number }>(
-  metrics: T,
-  hikeWindowRain: { precipitationProbability: number; precipitationSum: number } | null,
-): T {
-  if (!hikeWindowRain) {
-    return metrics;
-  }
-
-  return {
-    ...metrics,
-    precipitationProbability: hikeWindowRain.precipitationProbability,
-    precipitationSum: hikeWindowRain.precipitationSum,
-  };
-}
-
-export function parseCoordinates(latValue: string | null, lonValue: string | null): { lat: number; lon: number } | null {
-  if (!latValue || !lonValue) {
-    return null;
-  }
-
-  const lat = Number(latValue);
-  const lon = Number(lonValue);
-
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-    return null;
-  }
-
-  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-    return null;
-  }
-
-  return { lat, lon };
 }
 
 async function getCheckResultUncached(lat: number, lon: number, date: string): Promise<WeatherCheckResult> {
@@ -177,6 +144,7 @@ async function getCheckDetailsUncached(lat: number, lon: number, date: string): 
     primaryProvider: "Open-Meteo",
     secondaryProvider: "Visual Crossing",
     secondaryAvailable: hasSecondaryProvider,
+    primaryRecommendation: null,
     secondaryRecommendation: null,
     secondaryMetrics: null,
     primaryHikeWindowRain: null,
@@ -190,26 +158,26 @@ async function getCheckDetailsUncached(lat: number, lon: number, date: string): 
   };
 
   if (daysAhead <= SECONDARY_PROVIDER_MAX_DAYS) {
-    const [primaryHikeWindowRain, secondaryMetrics, secondaryHikeWindowRain] = await Promise.all([
+    const [primaryHikeWindowRain, secondaryForecast, primaryRange] = await Promise.all([
       fetchOpenMeteoHikeWindowRain(lat, lon, date).catch(() => null),
-      hasSecondaryProvider ? fetchVisualCrossingDay(lat, lon, date).catch(() => null) : Promise.resolve(null),
-      hasSecondaryProvider ? fetchVisualCrossingHikeWindowRain(lat, lon, date).catch(() => null) : Promise.resolve(null),
+      hasSecondaryProvider ? fetchVisualCrossingForecast(lat, lon, date).catch(() => null) : Promise.resolve(null),
+      fetchForecastRange(lat, lon, date, date),
     ]);
+
+    const primaryMetrics = primaryRange.get(date);
+    if (!primaryMetrics) {
+      throw new Error("Forecast data unavailable for this date.");
+    }
+
+    const primaryScored = scoreDay(date, applyHikeWindowRainToMetrics(primaryMetrics, primaryHikeWindowRain));
+    const secondaryMetrics = secondaryForecast?.dayMetrics ?? null;
+    const secondaryHikeWindowRain = secondaryForecast?.hikeWindowRain ?? null;
 
     consensus.primaryHikeWindowRain = primaryHikeWindowRain;
     consensus.secondaryHikeWindowRain = secondaryHikeWindowRain;
+    consensus.primaryRecommendation = primaryScored.recommendation;
 
     if (secondaryMetrics) {
-      const [primaryRange] = await Promise.all([
-        fetchForecastRange(lat, lon, date, date),
-      ]);
-      const primaryMetrics = primaryRange.get(date);
-
-      if (!primaryMetrics) {
-        throw new Error("Forecast data unavailable for this date.");
-      }
-
-      const primaryScored = scoreDay(date, applyHikeWindowRainToMetrics(primaryMetrics, primaryHikeWindowRain));
       const secondaryScored = scoreDay(date, applyHikeWindowRainToMetrics(secondaryMetrics, secondaryHikeWindowRain));
       const aligned = secondaryScored.recommendation === primaryScored.recommendation;
 
@@ -217,6 +185,7 @@ async function getCheckDetailsUncached(lat: number, lon: number, date: string): 
         primaryProvider: "Open-Meteo",
         secondaryProvider: "Visual Crossing",
         secondaryAvailable: true,
+        primaryRecommendation: primaryScored.recommendation,
         secondaryRecommendation: secondaryScored.recommendation,
         secondaryMetrics,
         primaryHikeWindowRain,

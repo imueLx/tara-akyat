@@ -1,9 +1,10 @@
 import mountains from "@/data/mountains.json";
 import tips from "@/data/tips.json";
+import { parseMountains, parseTips } from "@/lib/schemas/mountain";
 import type { Mountain, TipSource } from "@/types/hiking";
 
-const typedMountains = mountains as Mountain[];
-const typedTips = tips as TipSource[];
+const typedMountains = parseMountains(mountains);
+const typedTips = parseTips(tips);
 const canonicalRegionOrder = ["Luzon", "Visayas", "Mindanao"] as const;
 
 export function getMountains(): Mountain[] {

@@ -100,6 +100,7 @@ const climateDetailsPayload = {
     primaryProvider: "Open-Meteo",
     secondaryProvider: "Visual Crossing",
     secondaryAvailable: false,
+    primaryRecommendation: null,
     secondaryRecommendation: null,
     secondaryMetrics: null,
     primaryHikeWindowRain: null,

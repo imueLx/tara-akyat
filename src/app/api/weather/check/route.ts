@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { parseQuery, WeatherCheckQuerySchema } from "@/lib/api/schemas";
 import { createRateLimitHeaders, checkWeatherRouteRateLimit } from "@/lib/weather/rate-limit";
 import { createWeatherResponseHeaders, getWeatherRouteElapsedMs, logWeatherRouteTiming, normalizeWeatherRouteError } from "@/lib/weather/route-utils";
-import { parseCoordinates, getCheckResult } from "@/lib/weather/service";
+import { getCheckResult } from "@/lib/weather/service";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const startedAtMs = Date.now();
@@ -23,13 +24,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return response;
   }
 
-  const params = request.nextUrl.searchParams;
-  const coordinates = parseCoordinates(params.get("lat"), params.get("lon"));
-  const date = params.get("date");
+  const query = parseQuery(WeatherCheckQuerySchema, request.nextUrl.searchParams);
 
-  if (!coordinates || !date) {
+  if (!query.ok) {
     const response = NextResponse.json(
-      { error: "Missing or invalid lat/lon/date query params." },
+      { error: query.message },
       {
         status: 400,
         headers: {
@@ -43,7 +42,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const result = await getCheckResult(coordinates.lat, coordinates.lon, date);
+    const result = await getCheckResult(query.data.lat, query.data.lon, query.data.date);
     const response = NextResponse.json(result, {
       headers: {
         ...createWeatherResponseHeaders(

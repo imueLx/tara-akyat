@@ -5,13 +5,16 @@ const HIKE_WINDOW_START_HOUR = 4;
 const HIKE_WINDOW_END_HOUR = 14;
 const HIKE_WINDOW_LABEL = "4am-2pm";
 
+const VC_FORECAST_ELEMENTS =
+  "datetime,tempmax,feelslikemax,precip,precipprob,windspeed,conditions,hours.datetime,hours.precip,hours.precipprob";
+
 interface VisualCrossingHour {
   datetime: string;
   precip?: number;
   precipprob?: number;
 }
 
-interface VisualCrossingDay {
+export interface VisualCrossingDay {
   datetime: string;
   tempmax: number;
   feelslikemax: number;
@@ -24,6 +27,11 @@ interface VisualCrossingDay {
 
 interface VisualCrossingTimelineResponse {
   days: VisualCrossingDay[];
+}
+
+export interface VisualCrossingForecast {
+  dayMetrics: DailyWeatherMetrics;
+  hikeWindowRain: HikeWindowRainMetrics | null;
 }
 
 function conditionToCode(conditions?: string): number {
@@ -42,38 +50,12 @@ function conditionToCode(conditions?: string): number {
   return 1;
 }
 
-export function hasVisualCrossingKey(): boolean {
-  return Boolean(process.env.VISUAL_CROSSING_API_KEY);
+function parseHourValue(datetime: string): number | null {
+  const hourValue = Number.parseInt(datetime.slice(0, 2), 10);
+  return Number.isFinite(hourValue) ? hourValue : null;
 }
 
-export async function fetchVisualCrossingDay(
-  lat: number,
-  lon: number,
-  date: string,
-): Promise<DailyWeatherMetrics | null> {
-  const apiKey = process.env.VISUAL_CROSSING_API_KEY;
-  if (!apiKey) {
-    return null;
-  }
-
-  const params = new URLSearchParams({
-    unitGroup: "metric",
-    key: apiKey,
-    include: "days,hours",
-    elements: "datetime,tempmax,feelslikemax,precip,precipprob,windspeed,conditions,hours.datetime,hours.precip,hours.precipprob",
-    timezone: "Asia/Manila",
-  });
-
-  const url =
-    `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/` +
-    `${lat},${lon}/${date}/${date}?${params.toString()}`;
-  const payload = await fetchWeatherJson<VisualCrossingTimelineResponse>(url, "Visual Crossing forecast", 1800);
-  const day = payload.days[0];
-
-  if (!day) {
-    return null;
-  }
-
+export function parseVisualCrossingDayMetrics(day: VisualCrossingDay): DailyWeatherMetrics {
   return {
     precipitationProbability: day.precipprob ?? 0,
     precipitationSum: day.precip ?? 0,
@@ -84,31 +66,8 @@ export async function fetchVisualCrossingDay(
   };
 }
 
-export async function fetchVisualCrossingHikeWindowRain(
-  lat: number,
-  lon: number,
-  date: string,
-): Promise<HikeWindowRainMetrics | null> {
-  const apiKey = process.env.VISUAL_CROSSING_API_KEY;
-  if (!apiKey) {
-    return null;
-  }
-
-  const params = new URLSearchParams({
-    unitGroup: "metric",
-    key: apiKey,
-    include: "days,hours",
-    elements: "datetime,hours.datetime,hours.precip,hours.precipprob",
-    timezone: "Asia/Manila",
-  });
-
-  const url =
-    `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/` +
-    `${lat},${lon}/${date}/${date}?${params.toString()}`;
-  const payload = await fetchWeatherJson<VisualCrossingTimelineResponse>(url, "Visual Crossing hourly forecast", 1800);
-  const day = payload.days[0];
-
-  if (!day?.hours?.length) {
+export function parseVisualCrossingHikeWindowRain(day: VisualCrossingDay): HikeWindowRainMetrics | null {
+  if (!day.hours?.length) {
     return null;
   }
 
@@ -117,9 +76,9 @@ export async function fetchVisualCrossingHikeWindowRain(
   let sampleHours = 0;
 
   for (const hour of day.hours) {
-    const hourValue = Number.parseInt(hour.datetime.slice(0, 2), 10);
+    const hourValue = parseHourValue(hour.datetime);
 
-    if (!Number.isFinite(hourValue) || hourValue < HIKE_WINDOW_START_HOUR || hourValue > HIKE_WINDOW_END_HOUR) {
+    if (hourValue === null || hourValue < HIKE_WINDOW_START_HOUR || hourValue > HIKE_WINDOW_END_HOUR) {
       continue;
     }
 
@@ -139,5 +98,51 @@ export async function fetchVisualCrossingHikeWindowRain(
     sampleHours,
     precipitationProbability: Number(precipitationProbabilityMax.toFixed(0)),
     precipitationSum: Number(precipitationSum.toFixed(1)),
+  };
+}
+
+export function hasVisualCrossingKey(): boolean {
+  return Boolean(process.env.VISUAL_CROSSING_API_KEY);
+}
+
+async function fetchVisualCrossingDayPayload(
+  lat: number,
+  lon: number,
+  date: string,
+): Promise<VisualCrossingDay | null> {
+  const apiKey = process.env.VISUAL_CROSSING_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    unitGroup: "metric",
+    key: apiKey,
+    include: "days,hours",
+    elements: VC_FORECAST_ELEMENTS,
+    timezone: "Asia/Manila",
+  });
+
+  const url =
+    `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/` +
+    `${lat},${lon}/${date}/${date}?${params.toString()}`;
+  const payload = await fetchWeatherJson<VisualCrossingTimelineResponse>(url, "Visual Crossing forecast", 1800);
+  return payload.days[0] ?? null;
+}
+
+export async function fetchVisualCrossingForecast(
+  lat: number,
+  lon: number,
+  date: string,
+): Promise<VisualCrossingForecast | null> {
+  const day = await fetchVisualCrossingDayPayload(lat, lon, date);
+
+  if (!day) {
+    return null;
+  }
+
+  return {
+    dayMetrics: parseVisualCrossingDayMetrics(day),
+    hikeWindowRain: parseVisualCrossingHikeWindowRain(day),
   };
 }

@@ -86,6 +86,7 @@ export interface ProviderConsensus {
   primaryProvider: string;
   secondaryProvider: string;
   secondaryAvailable: boolean;
+  primaryRecommendation: RecommendationLevel | null;
   secondaryRecommendation: RecommendationLevel | null;
   secondaryMetrics: DailyWeatherMetrics | null;
   primaryHikeWindowRain: HikeWindowRainMetrics | null;

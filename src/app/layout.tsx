@@ -1,9 +1,12 @@
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 import { Chivo, JetBrains_Mono } from "next/font/google";
 
 import { AppTopNav } from "@/components/app-top-nav";
 import { SiteFooter } from "@/components/site-footer";
-import { DEFAULT_OG_IMAGE_PATH, SITE_DESCRIPTION, SITE_LOCALE, SITE_LOGO_PATH, SITE_NAME, getBaseUrl } from "@/lib/seo";
+import { Toaster } from "@/components/ui/sonner";
+import { SITE_DESCRIPTION, SITE_LOCALE, SITE_LOGO_PATH, SITE_NAME, getBaseUrl } from "@/lib/seo";
 import { getThemeBootstrapScript } from "@/lib/theme";
 
 import "./globals.css";
@@ -42,20 +45,11 @@ export const metadata: Metadata = {
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
     url: "/",
-    images: [
-      {
-        url: DEFAULT_OG_IMAGE_PATH,
-        width: 1200,
-        height: 630,
-        alt: "Tara Akyat mountain hiking weather planner",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
-    images: [DEFAULT_OG_IMAGE_PATH],
   },
   robots: {
     index: true,
@@ -91,9 +85,20 @@ export default function RootLayout({
             __html: getThemeBootstrapScript(),
           }}
         />
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-60 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground"
+        >
+          Skip to content
+        </a>
         <AppTopNav />
-        <div className="min-h-[calc(100vh-4rem)]">{children}</div>
+        <div id="main-content" className="min-h-[calc(100vh-4rem)]">
+          {children}
+        </div>
         <SiteFooter />
+        <Toaster />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

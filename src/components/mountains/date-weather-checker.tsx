@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { RecommendationPill } from "@/components/mountains/recommendation-pill";
+import { WeatherDetailsSkeleton, WeatherResultSkeleton } from "@/components/mountains/weather-result-skeleton";
 import { addDays, differenceInDays, formatISODate, isValidDate } from "@/lib/date";
 import { getWeatherClientCache, setWeatherClientCache } from "@/lib/weather/client-cache";
 import { formatRainValueCompact, formatReadableDate, formatWindowRainValue, historySummary, rainAmountLabel } from "@/lib/weather/presentation";
@@ -339,54 +340,6 @@ function secondaryForecastTone(details: WeatherCheckDetails): GuidanceTone {
   };
 }
 
-function DetailsSkeleton() {
-  return (
-    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2" role="status" aria-live="polite" aria-label="Loading more weather details">
-      {Array.from({ length: 2 }).map((_, index) => (
-        <div key={`detail-skeleton-${index}`} className="animate-pulse rounded-2xl border border-slate-200 bg-white px-3 py-3">
-          <div className="h-3 w-28 rounded-full bg-slate-200" />
-          <div className="mt-3 h-5 w-32 rounded-full bg-slate-200" />
-          <div className="mt-2 h-4 w-full rounded-full bg-slate-100" />
-          <div className="mt-2 h-4 w-10/12 rounded-full bg-slate-100" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function LoadingResultsSkeleton() {
-  return (
-    <div
-      className="mt-4 space-y-3"
-      role="status"
-      aria-live="polite"
-      aria-label="Loading weather results"
-    >
-      <div className="animate-pulse rounded-3xl border border-slate-200 bg-white p-4 sm:p-5">
-        <div className="h-3 w-28 rounded-full bg-slate-200" />
-        <div className="mt-3 h-6 w-52 rounded-full bg-slate-200" />
-        <div className="mt-2 h-4 w-full rounded-full bg-slate-100" />
-        <div className="mt-2 h-4 w-11/12 rounded-full bg-slate-100" />
-        <div className="mt-4 flex flex-wrap gap-2">
-          <div className="h-7 w-32 rounded-full bg-slate-100" />
-          <div className="h-7 w-28 rounded-full bg-slate-100" />
-          <div className="h-7 w-24 rounded-full bg-slate-100" />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={`metric-skeleton-${index}`} className="animate-pulse rounded-2xl border border-slate-200 bg-white px-3 py-3">
-            <div className="h-3 w-20 rounded-full bg-slate-200" />
-            <div className="mt-3 h-6 w-16 rounded-full bg-slate-200" />
-            <div className="mt-2 h-3 w-24 rounded-full bg-slate-100" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function resultScrollBehavior(): ScrollBehavior {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return "smooth";
@@ -625,7 +578,7 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
         <div ref={resultsAnchorRef} />
 
         {loading ? (
-          <LoadingResultsSkeleton />
+          <WeatherResultSkeleton />
         ) : result ? (
           <div className="mt-4 space-y-3" aria-live="polite" aria-atomic="true">
             <article className={`rounded-3xl border p-4 sm:p-5 ${resultTone(result)}`}>
@@ -778,7 +731,7 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
               </button>
 
               {showMoreDetails ? detailsLoading ? (
-                <DetailsSkeleton />
+                <WeatherDetailsSkeleton />
               ) : detailsError ? (
                 <p className="mt-3 rounded-2xl bg-rose-50 px-3 py-3 text-sm text-rose-700">{detailsError}</p>
               ) : details ? (

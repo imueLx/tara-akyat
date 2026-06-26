@@ -12,21 +12,21 @@ const navItems = [
 
 function navTone(isActive: boolean): string {
   if (isActive) {
-    return "bg-slate-950 text-white shadow-sm";
+    return "bg-primary text-primary-foreground shadow-sm";
   }
 
-  return "text-slate-600 hover:bg-slate-100 hover:text-slate-900";
+  return "text-muted-foreground hover:bg-secondary hover:text-foreground";
 }
 
 export function AppTopNav() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-border bg-card/90 pt-[env(safe-area-inset-top)] backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:px-6 md:flex-row md:items-center md:justify-between">
         <Link href="/" className="min-w-0">
           <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-sky-700">Tara Akyat</p>
-          <p className="mt-0.5 truncate text-sm font-semibold text-slate-900">
+          <p className="mt-0.5 truncate text-sm font-semibold text-foreground">
             Check if the day is good for hiking
           </p>
         </Link>
@@ -34,7 +34,7 @@ export function AppTopNav() {
         <div className="flex w-full items-center gap-2 md:w-auto">
           <nav
             aria-label="Primary"
-            className="grid min-w-0 flex-1 grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1 md:w-auto md:min-w-[250px] md:flex-none"
+            className="grid min-w-0 flex-1 grid-cols-2 gap-1 rounded-2xl border border-border bg-secondary p-1 md:w-auto md:min-w-[250px] md:flex-none"
           >
             {navItems.map((item) => {
               const isActive =
