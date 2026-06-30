@@ -1,7 +1,7 @@
 "use client";
 
 const WEATHER_CLIENT_CACHE_TTL_MS = 60 * 60 * 1000;
-const WEATHER_CLIENT_CACHE_PREFIX = "weather-cache:v2:";
+const WEATHER_CLIENT_CACHE_PREFIX = "weather-cache:v3:";
 
 type WeatherClientCacheEntry<T> = {
   expiresAt: number;

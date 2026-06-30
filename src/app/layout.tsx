@@ -1,11 +1,13 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Chivo, JetBrains_Mono } from "next/font/google";
 
 import { AppTopNav } from "@/components/app-top-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { Toaster } from "@/components/ui/sonner";
+import { getNavHubQuickLinks } from "@/lib/hub-links";
 import { SITE_DESCRIPTION, SITE_LOCALE, SITE_LOGO_PATH, SITE_NAME, getBaseUrl } from "@/lib/seo";
 import { getThemeBootstrapScript } from "@/lib/theme";
 
@@ -80,7 +82,9 @@ export default function RootLayout({
       className={`${chivo.variable} ${jetbrainsMono.variable}`}
     >
       <body className="min-h-screen bg-background text-foreground">
-        <script
+        <Script
+          id="theme-bootstrap"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: getThemeBootstrapScript(),
           }}
@@ -91,7 +95,7 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <AppTopNav />
+        <AppTopNav hubQuickLinks={getNavHubQuickLinks()} />
         <div id="main-content" className="min-h-[calc(100vh-4rem)]">
           {children}
         </div>

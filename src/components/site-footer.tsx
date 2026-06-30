@@ -1,14 +1,11 @@
 import Link from "next/link";
 
+import { getFooterExploreLinks } from "@/lib/hub-links";
+
 const footerSections = [
   {
     title: "Explore",
-    links: [
-      { href: "/", label: "Check hiking weather" },
-      { href: "/mountains", label: "Browse all mountains" },
-      { href: "/regions/luzon", label: "Luzon guides" },
-      { href: "/difficulty/beginner", label: "Beginner hikes" },
-    ],
+    links: getFooterExploreLinks(),
   },
   {
     title: "Trust",

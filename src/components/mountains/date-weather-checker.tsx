@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { RecommendationPill } from "@/components/mountains/recommendation-pill";
+import { RainAmountDisplay } from "@/components/mountains/rain-amount-display";
+import { RainHistoryCard } from "@/components/mountains/rain-history-card";
 import { WeatherDetailsSkeleton, WeatherResultSkeleton } from "@/components/mountains/weather-result-skeleton";
 import { addDays, differenceInDays, formatISODate, isValidDate } from "@/lib/date";
 import { getWeatherClientCache, setWeatherClientCache } from "@/lib/weather/client-cache";
-import { formatRainValueCompact, formatReadableDate, formatWindowRainValue, historySummary, rainAmountLabel } from "@/lib/weather/presentation";
+import { formatMainForecastCompare, formatReadableDate, formatWindowRainValue, getRainChanceGuidance, getTrailRainImpact, hasSecondaryForecastData, rainAmountLabel, secondaryOpinionHeadline, secondOpinionSubtitle, shouldExplainSecondaryUnavailable } from "@/lib/weather/presentation";
 import { getSelectedReliability } from "@/lib/weather/reliability";
 import type { WeatherCheckDetails, WeatherCheckResult } from "@/types/hiking";
 
@@ -125,10 +127,12 @@ function compactReasons(result: WeatherCheckResult): string[] {
 }
 
 function rainChanceTone(value: number): MetricTone {
+  const guidance = getRainChanceGuidance(value);
+
   if (value >= 70) {
     return {
-      label: "High",
-      detail: "Rain is likely",
+      label: guidance.label,
+      detail: guidance.detail,
       cardClassName: "border-sky-200 bg-sky-50",
       pillClassName: "bg-sky-100 text-sky-800",
       valueClassName: "text-sky-900",
@@ -137,8 +141,8 @@ function rainChanceTone(value: number): MetricTone {
 
   if (value >= 35) {
     return {
-      label: "Medium",
-      detail: "Showers are possible",
+      label: guidance.label,
+      detail: guidance.detail,
       cardClassName: "border-amber-200 bg-amber-50",
       pillClassName: "bg-amber-100 text-amber-800",
       valueClassName: "text-amber-900",
@@ -146,8 +150,8 @@ function rainChanceTone(value: number): MetricTone {
   }
 
   return {
-    label: "Low",
-      detail: "Less rain likely",
+    label: guidance.label,
+    detail: guidance.detail,
     cardClassName: "border-emerald-200 bg-emerald-50",
     pillClassName: "bg-emerald-100 text-emerald-800",
     valueClassName: "text-emerald-900",
@@ -155,42 +159,14 @@ function rainChanceTone(value: number): MetricTone {
 }
 
 function rainAmountTone(value: number): MetricTone {
-  if (value <= 0) {
-    return {
-      label: "None",
-      detail: "No rain expected",
-      cardClassName: "border-emerald-200 bg-emerald-50",
-      pillClassName: "bg-emerald-100 text-emerald-800",
-      valueClassName: "text-emerald-900",
-    };
-  }
-
-  if (value >= 8) {
-    return {
-      label: "Heavy",
-      detail: "Trails likely wet",
-      cardClassName: "border-sky-200 bg-sky-50",
-      pillClassName: "bg-sky-100 text-sky-800",
-      valueClassName: "text-sky-900",
-    };
-  }
-
-  if (value >= 2) {
-    return {
-      label: "Moderate",
-      detail: "Rain possible",
-      cardClassName: "border-amber-200 bg-amber-50",
-      pillClassName: "bg-amber-100 text-amber-800",
-      valueClassName: "text-amber-900",
-    };
-  }
+  const impact = getTrailRainImpact(value);
 
   return {
-    label: "Light",
-    detail: "Light rain",
-    cardClassName: "border-emerald-200 bg-emerald-50",
-    pillClassName: "bg-emerald-100 text-emerald-800",
-    valueClassName: "text-emerald-900",
+    label: impact.shortLabel,
+    detail: impact.detail,
+    cardClassName: impact.cardClassName,
+    pillClassName: impact.pillClassName,
+    valueClassName: impact.valueClassName,
   };
 }
 
@@ -410,7 +386,9 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
 
     return differenceInDays(new Date(`${details.date}T00:00:00`), new Date(`${todayIso}T00:00:00`));
   }, [details, todayIso]);
-  const shouldShowSecondaryForecastCard = detailsDaysAhead !== null && detailsDaysAhead <= 7;
+  const shouldShowSecondaryForecastCard =
+    details !== null && detailsDaysAhead !== null && hasSecondaryForecastData(details, detailsDaysAhead);
+  const secondOpinionHint = secondOpinionSubtitle(Math.max(0, daysAhead), details);
 
   const onCheck = useCallback(
     async (dateToCheck = date, options?: { scrollToResults?: boolean }) => {
@@ -612,7 +590,10 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
 
             {result.metrics && metricGuides ? (
               <section className="rounded-2xl border border-slate-200 bg-white p-3">
-                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">Weather diagnostics</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">Weather diagnostics</p>
+                  <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">Main forecast · Open-Meteo</p>
+                </div>
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <article className={`rounded-2xl border px-3 py-3 ${metricGuides.rainChance.cardClassName}`}>
                     <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -629,15 +610,17 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
 
                   <article className={`rounded-2xl border px-3 py-3 ${metricGuides.rainAmount.cardClassName}`}>
                     <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Rain (mm)</p>
+                      <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">Trail rain</p>
                       <span className={`inline-flex w-fit items-center rounded-full px-2 py-1 text-[11px] font-semibold leading-none ${metricGuides.rainAmount.pillClassName}`}>
                         {metricGuides.rainAmount.label}
                       </span>
                     </div>
-                    <p className={`mt-2 text-lg font-semibold ${metricGuides.rainAmount.valueClassName}`}>
-                      {result.hikeWindowRain?.precipitationSum ?? result.metrics.precipitationSum} mm
-                    </p>
-                    <p className="mt-1 text-xs text-slate-600">{metricGuides.rainAmount.detail}</p>
+                    <div className="mt-2">
+                      <RainAmountDisplay
+                        valueMm={result.hikeWindowRain?.precipitationSum ?? result.metrics.precipitationSum}
+                        variant="metric"
+                      />
+                    </div>
                   </article>
 
                   <article className={`rounded-2xl border px-3 py-3 ${metricGuides.wind.cardClassName}`}>
@@ -686,7 +669,7 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
                     <p className="mt-1 text-base font-semibold text-amber-950">
                       {result.climate?.avgPrecipitation ?? 0} mm • {rainAmountLabel(result.climate?.avgPrecipitation ?? 0)}
                     </p>
-                    <p className="mt-1 text-[11px] leading-5 text-amber-800">Month-based planning outlook. Open Cross-checks for the recent-history breakdown.</p>
+                    <p className="mt-1 text-[11px] leading-5 text-amber-800">Month-based planning outlook. Expand Second opinion for rainfall history on this date.</p>
                   </div>
                 </div>
               </section>
@@ -720,10 +703,10 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
                         <path d="M6 13V9.5M10 13V6.5M14 13V8" />
                       </svg>
                     </span>
-                    <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Cross-checks</p>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">Second opinion</p>
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-slate-950">Forecast cross-checks</p>
-                  <p className="mt-1 text-xs text-slate-600">Second forecast and 2-year rain history.</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-950">Another forecast & rain history</p>
+                  <p className="mt-1 text-xs text-slate-600">{secondOpinionHint}</p>
                 </div>
                 <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm">
                   {showMoreDetails ? "Hide" : "Show"}
@@ -731,29 +714,40 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
               </button>
 
               {showMoreDetails ? detailsLoading ? (
-                <WeatherDetailsSkeleton />
+                <WeatherDetailsSkeleton className="mt-3 grid grid-cols-1 gap-2" />
               ) : detailsError ? (
                 <p className="mt-3 rounded-2xl bg-rose-50 px-3 py-3 text-sm text-rose-700">{detailsError}</p>
               ) : details ? (
-                <div className={`mt-3 grid grid-cols-1 gap-2 ${shouldShowSecondaryForecastCard ? "sm:grid-cols-2" : ""}`}>
+                <>
+                  {detailsDaysAhead !== null && shouldExplainSecondaryUnavailable(details, detailsDaysAhead) ? (
+                    <p className="mt-3 text-xs leading-5 text-slate-600">{details.consensus.note}</p>
+                  ) : null}
+                  <div className={`mt-3 grid grid-cols-1 gap-2 ${shouldShowSecondaryForecastCard ? "sm:grid-cols-2" : ""}`}>
                   {shouldShowSecondaryForecastCard ? (
                     <article className="overflow-hidden rounded-[22px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-3 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
                       <div className="mb-3 h-px bg-[linear-gradient(90deg,rgba(14,165,233,0.18),rgba(148,163,184,0))]" />
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-semibold text-slate-900">Forecast cross-check</p>
+                        <div>
+                          <p className="text-xs font-semibold text-slate-900">{details.consensus.secondaryProvider}</p>
+                          <p className="mt-0.5 text-[11px] text-slate-500">Extra check · same mountain & date</p>
+                        </div>
                         <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${secondaryGuidance?.chipClassName ?? "bg-slate-100 text-slate-700"}`}>
                           {secondaryGuidance?.label ?? "No data"}
                         </span>
                       </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-900">
-                        {details.consensus.secondaryRecommendation
-                          ? `${details.consensus.secondaryRecommendation} from the second forecast`
-                          : "Second forecast details"}
-                      </p>
+                      {secondaryOpinionHeadline(details.consensus) ? (
+                        <p className="mt-2 text-sm font-semibold text-slate-900">{secondaryOpinionHeadline(details.consensus)}</p>
+                      ) : (
+                        <p className="mt-2 text-sm font-semibold text-slate-900">{details.consensus.note}</p>
+                      )}
+                      {secondaryOpinionHeadline(details.consensus) &&
+                      (details.consensus.agreement === "aligned" || details.consensus.agreement === "mixed") ? (
+                        <p className="mt-1 break-words text-xs leading-5 text-slate-700">{details.consensus.note}</p>
+                      ) : null}
                       <p className="mt-1 break-words text-xs leading-5 text-slate-700">
                         {details.consensus.secondaryHikeWindowRain
-                          ? `Rain summary for the ${details.consensus.secondaryHikeWindowRain.label} hiking window.`
-                          : "Rain summary from the second provider for this date."}
+                          ? `${details.consensus.secondaryProvider} view for the ${details.consensus.secondaryHikeWindowRain.label} hike window.`
+                          : `${details.consensus.secondaryProvider} view for this date.`}
                       </p>
                       <div className="mt-2 grid grid-cols-2 gap-2">
                         <div className="rounded-xl border border-white/90 bg-white/80 px-3 py-2">
@@ -763,58 +757,37 @@ export function DateWeatherChecker({ lat, lon, initialDate }: Props) {
                           </p>
                         </div>
                         <div className="rounded-xl border border-white/90 bg-white/80 px-3 py-2">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Rain amount</p>
-                          <div className="mt-1">
-                            <p className="text-sm font-semibold text-slate-900">
-                              {details.consensus.secondaryHikeWindowRain?.precipitationSum ?? details.consensus.secondaryMetrics?.precipitationSum ?? "--"}
-                              {typeof (details.consensus.secondaryHikeWindowRain?.precipitationSum ?? details.consensus.secondaryMetrics?.precipitationSum) === "number" ? " mm" : ""}
-                            </p>
-                            {typeof (details.consensus.secondaryHikeWindowRain?.precipitationSum ?? details.consensus.secondaryMetrics?.precipitationSum) === "number" ? (
-                              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">
-                                {rainAmountLabel(details.consensus.secondaryHikeWindowRain?.precipitationSum ?? details.consensus.secondaryMetrics?.precipitationSum ?? 0)}
-                              </p>
-                            ) : null}
-                          </div>
+                          {typeof (details.consensus.secondaryHikeWindowRain?.precipitationSum ?? details.consensus.secondaryMetrics?.precipitationSum) === "number" ? (
+                            <RainAmountDisplay
+                              valueMm={details.consensus.secondaryHikeWindowRain?.precipitationSum ?? details.consensus.secondaryMetrics?.precipitationSum ?? 0}
+                              variant="compact"
+                            />
+                          ) : (
+                            <>
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Trail rain</p>
+                              <p className="mt-1 text-sm font-semibold text-slate-900">--</p>
+                            </>
+                          )}
                         </div>
                       </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-900">
+                      <p className="mt-2 text-xs font-medium text-slate-600">
                         {details.consensus.primaryHikeWindowRain
-                          ? `Main forecast: ${formatRainValueCompact(details.consensus.primaryHikeWindowRain)}`
+                          ? formatMainForecastCompare(details.consensus.primaryHikeWindowRain)
                           : secondaryGuidance?.valueText ?? "Unavailable"}
                       </p>
                     </article>
                   ) : null}
 
-                  <article className="overflow-hidden rounded-[22px] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fcfcfb_100%)] px-3 py-3 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
-                    <div className="mb-3 h-px bg-[linear-gradient(90deg,rgba(245,158,11,0.22),rgba(148,163,184,0))]" />
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-slate-900">2-year history</p>
-                      <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700">
-                        {historyGuidance?.label ?? "No data"}
-                      </span>
-                    </div>
-                    <p className="mt-1 break-words text-xs leading-5 text-slate-700">
-                        Based on rainfall from the past 2 years.
-                    </p>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <div className="rounded-xl border border-white/90 bg-white/80 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Same date</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-900">{details.history.targetDateWetDayChance}% wet days</p>
-                      </div>
-                      <div className="rounded-xl border border-white/90 bg-white/80 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Avg rain</p>
-                        <div className="mt-1">
-                          <p className="text-sm font-semibold text-slate-900">{details.history.targetDateAvgPrecipitation} mm</p>
-                          <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">
-                            {rainAmountLabel(details.history.targetDateAvgPrecipitation)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <p className="mt-2 text-base font-semibold text-slate-900">{historyGuidance?.valueText ?? "Unavailable"}</p>
-                    <p className="mt-1 break-words text-[11px] leading-5 text-slate-500">{historySummary(details)}</p>
-                  </article>
+                  <RainHistoryCard
+                    history={details.history}
+                    targetDate={details.date}
+                    chipLabel={historyGuidance?.label ?? "No data"}
+                    chipClassName={historyGuidance?.chipClassName ?? "bg-slate-100 text-slate-700"}
+                    summaryValue={historyGuidance?.valueText ?? "Unavailable"}
+                    compact
+                  />
                 </div>
+                </>
               ) : null : null}
             </section>
           </div>

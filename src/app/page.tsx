@@ -6,6 +6,7 @@ import { PageShell } from "@/components/layout/page-primitives";
 import { HomePlannerQueryBridge } from "@/components/mountains/home-planner-query-bridge";
 import { HomePlannerShell } from "@/components/mountains/home-planner-shell";
 import { FaqSection } from "@/components/seo/faq-section";
+import { JsonLdScript } from "@/components/seo/json-ld-script";
 import { getMountainBySlug, getMountains, getRegions } from "@/lib/mountains";
 import {
   SITE_ALTERNATE_NAME,
@@ -13,9 +14,9 @@ import {
   SITE_LOGO_PATH,
   SITE_NAME,
   absoluteUrl,
+  getDateQueryParamRobots,
   getHomeMetaDescription,
   getHomeSearchKeywords,
-  serializeJsonLd,
 } from "@/lib/seo";
 
 const mountains = getMountains();
@@ -45,25 +46,32 @@ const plannerMountains = mountains.map((mountain) => ({
   summary: mountain.summary,
 }));
 
-export const metadata: Metadata = {
-  title: homeTitle,
-  description: homeDescription,
-  keywords: homeKeywords,
-  alternates: {
-    canonical: "/",
-  },
-  openGraph: {
-    siteName: SITE_NAME,
-    title: `${homeTitle} | ${SITE_NAME}`,
+export async function generateMetadata({ searchParams }: Pick<PageProps<"/">, "searchParams">): Promise<Metadata> {
+  const resolvedSearchParams = await searchParams;
+  const dateParam = typeof resolvedSearchParams.date === "string" ? resolvedSearchParams.date : undefined;
+  const dateQueryRobots = getDateQueryParamRobots(dateParam);
+
+  return {
+    title: homeTitle,
     description: homeDescription,
-    url: "/",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: `${homeTitle} | ${SITE_NAME}`,
-    description: homeDescription,
-  },
-};
+    keywords: homeKeywords,
+    alternates: {
+      canonical: "/",
+    },
+    ...(dateQueryRobots ? { robots: dateQueryRobots } : {}),
+    openGraph: {
+      siteName: SITE_NAME,
+      title: `${homeTitle} | ${SITE_NAME}`,
+      description: homeDescription,
+      url: "/",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${homeTitle} | ${SITE_NAME}`,
+      description: homeDescription,
+    },
+  };
+}
 
 export default function Home() {
   const faqs = [
@@ -95,95 +103,93 @@ export default function Home() {
 
   return (
     <PageShell className="pb-10">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: serializeJsonLd({
-            "@context": "https://schema.org",
-            "@graph": [
-              {
-                "@type": "Organization",
+      <JsonLdScript
+        id="home-json-ld"
+        data={{
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": absoluteUrl("/#organization"),
+              name: SITE_NAME,
+              alternateName: SITE_ALTERNATE_NAME,
+              description: SITE_DESCRIPTION,
+              url: absoluteUrl("/"),
+              logo: {
+                "@type": "ImageObject",
+                url: absoluteUrl(SITE_LOGO_PATH),
+                width: 512,
+                height: 512,
+              },
+            },
+            {
+              "@type": "WebSite",
+              "@id": absoluteUrl("/#website"),
+              name: SITE_NAME,
+              alternateName: SITE_ALTERNATE_NAME,
+              description: homeDescription,
+              inLanguage: "en-PH",
+              url: absoluteUrl("/"),
+              about: [
+                absoluteUrl("/about"),
+                absoluteUrl("/methodology"),
+                absoluteUrl("/sources"),
+              ],
+              publisher: {
                 "@id": absoluteUrl("/#organization"),
-                name: SITE_NAME,
-                alternateName: SITE_ALTERNATE_NAME,
-                description: SITE_DESCRIPTION,
-                url: absoluteUrl("/"),
-                logo: {
-                  "@type": "ImageObject",
-                  url: absoluteUrl(SITE_LOGO_PATH),
-                  width: 512,
-                  height: 512,
-                },
               },
-              {
-                "@type": "WebSite",
+            },
+            {
+              "@type": "WebPage",
+              "@id": absoluteUrl("/#webpage"),
+              name: homeTitle,
+              description: homeDescription,
+              url: absoluteUrl("/"),
+              isPartOf: {
                 "@id": absoluteUrl("/#website"),
-                name: SITE_NAME,
-                alternateName: SITE_ALTERNATE_NAME,
-                description: homeDescription,
-                inLanguage: "en-PH",
-                url: absoluteUrl("/"),
-                about: [
-                  absoluteUrl("/about"),
-                  absoluteUrl("/methodology"),
-                  absoluteUrl("/sources"),
-                ],
-                publisher: {
-                  "@id": absoluteUrl("/#organization"),
+              },
+              about: [
+                {
+                  "@type": "Thing",
+                  name: "Hiking weather",
                 },
-              },
-              {
-                "@type": "WebPage",
-                "@id": absoluteUrl("/#webpage"),
-                name: homeTitle,
-                description: homeDescription,
-                url: absoluteUrl("/"),
-                isPartOf: {
-                  "@id": absoluteUrl("/#website"),
+                {
+                  "@type": "Thing",
+                  name: "Philippine mountains",
                 },
-                about: [
-                  {
-                    "@type": "Thing",
-                    name: "Hiking weather",
-                  },
-                  {
-                    "@type": "Thing",
-                    name: "Philippine mountains",
-                  },
-                ],
+              ],
+            },
+            {
+              "@type": "WebApplication",
+              "@id": absoluteUrl("/#app"),
+              name: SITE_NAME,
+              description: SITE_DESCRIPTION,
+              url: absoluteUrl("/"),
+              applicationCategory: "TravelApplication",
+              operatingSystem: "Web",
+              offers: {
+                "@type": "Offer",
+                price: "0",
+                priceCurrency: "PHP",
               },
-              {
-                "@type": "WebApplication",
-                "@id": absoluteUrl("/#app"),
-                name: SITE_NAME,
-                description: SITE_DESCRIPTION,
-                url: absoluteUrl("/"),
-                applicationCategory: "TravelApplication",
-                operatingSystem: "Web",
-                offers: {
-                  "@type": "Offer",
-                  price: "0",
-                  priceCurrency: "PHP",
+              featureList: [
+                "Date-based hiking weather checks",
+                "Forecast reliability guidance",
+                "Philippine mountain guide pages",
+              ],
+            },
+            {
+              "@type": "FAQPage",
+              mainEntity: faqs.map((faq) => ({
+                "@type": "Question",
+                name: faq.question,
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: faq.answer,
                 },
-                featureList: [
-                  "Date-based hiking weather checks",
-                  "Forecast reliability guidance",
-                  "Philippine mountain guide pages",
-                ],
-              },
-              {
-                "@type": "FAQPage",
-                mainEntity: faqs.map((faq) => ({
-                  "@type": "Question",
-                  name: faq.question,
-                  acceptedAnswer: {
-                    "@type": "Answer",
-                    text: faq.answer,
-                  },
-                })),
-              },
-            ],
-          }),
+              })),
+            },
+          ],
         }}
       />
 

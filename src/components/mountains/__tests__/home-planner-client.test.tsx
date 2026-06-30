@@ -94,6 +94,10 @@ const climateDetailsPayload = {
     targetDateAvgPrecipitation: 2.5,
     targetDateWetDayChance: 50,
     targetDateSamples: 2,
+    targetDateSnapshots: [
+      { date: "2025-04-30", precipitationSum: 2.5, wasWet: true },
+      { date: "2024-04-30", precipitationSum: 2.5, wasWet: true },
+    ],
     note: "Last 2 years show mixed conditions for this month. Recheck weather near hike day.",
   },
   consensus: {
@@ -232,12 +236,13 @@ describe("HomePlannerClient", () => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Second opinion/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("2-year history")).toBeInTheDocument();
+      expect(screen.getByText("Rain history")).toBeInTheDocument();
+      expect(screen.getByText("April 30, 2025")).toBeInTheDocument();
       expect(screen.getAllByText("42% wet days").length).toBeGreaterThan(0);
-      expect(screen.getByText(/^Same date$/)).toBeInTheDocument();
+      expect(screen.queryByText(/^Same date$/)).not.toBeInTheDocument();
       expect(screen.queryByText("Another forecast source")).not.toBeInTheDocument();
       expect(screen.queryByText("Day-level rain forecast is unavailable for this date range.")).not.toBeInTheDocument();
     });
@@ -260,14 +265,14 @@ describe("HomePlannerClient", () => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Second opinion/i }));
     await waitFor(() => {
-      expect(screen.getByText("2-year history")).toBeInTheDocument();
+      expect(screen.getByText("Rain history")).toBeInTheDocument();
       expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Second opinion/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Second opinion/i }));
 
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledTimes(2);

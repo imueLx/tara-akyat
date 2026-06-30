@@ -238,6 +238,7 @@ export async function fetchTwoYearHistoryCrosscheck(
   let targetDatePrecipitation = 0;
   let targetDateSamples = 0;
   let targetDateWetDays = 0;
+  const targetDateSnapshots: HistoryCrosscheck["targetDateSnapshots"] = [];
 
   for (let i = 0; i < payload.daily.time.length; i += 1) {
     const date = new Date(`${payload.daily.time[i]}T00:00:00`);
@@ -263,8 +264,16 @@ export async function fetchTwoYearHistoryCrosscheck(
       if (rain >= 1) {
         targetDateWetDays += 1;
       }
+
+      targetDateSnapshots.push({
+        date: payload.daily.time[i],
+        precipitationSum: Number(rain.toFixed(1)),
+        wasWet: rain >= 1,
+      });
     }
   }
+
+  targetDateSnapshots.sort((a, b) => b.date.localeCompare(a.date));
 
   const avgDailyPrecipitation = totalDays > 0 ? Number((totalPrecipitation / totalDays).toFixed(1)) : 0;
   const wetDayChance = totalDays > 0 ? Number(((totalWetDays / totalDays) * 100).toFixed(0)) : 0;
@@ -292,6 +301,7 @@ export async function fetchTwoYearHistoryCrosscheck(
     targetDateAvgPrecipitation,
     targetDateWetDayChance,
     targetDateSamples,
+    targetDateSnapshots,
     note,
   };
 }

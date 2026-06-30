@@ -69,6 +69,12 @@ export interface ClimateGuidance {
   advisory: string;
 }
 
+export interface HistoryTargetDateSnapshot {
+  date: string;
+  precipitationSum: number;
+  wasWet: boolean;
+}
+
 export interface HistoryCrosscheck {
   periodStart: string;
   periodEnd: string;
@@ -79,6 +85,7 @@ export interface HistoryCrosscheck {
   targetDateAvgPrecipitation: number;
   targetDateWetDayChance: number;
   targetDateSamples: number;
+  targetDateSnapshots: HistoryTargetDateSnapshot[];
   note: string;
 }
 

@@ -9,6 +9,8 @@ import { DifficultyPill } from "@/components/mountains/difficulty-pill";
 import { MountainPhotoLightbox } from "@/components/mountains/mountain-photo-lightbox";
 import { TipsList } from "@/components/mountains/tips-list";
 import { FaqSection } from "@/components/seo/faq-section";
+import { JsonLdScript } from "@/components/seo/json-ld-script";
+import { MountainLinkGrid } from "@/components/seo/mountain-link-grid";
 import { getMountainImageObjectPosition } from "@/lib/mountain-image";
 import {
   buildMountainJsonLd,
@@ -16,14 +18,23 @@ import {
   getMountainFaqs,
   sortMountainBestMonths,
 } from "@/lib/mountain-page-content";
+import { getRelatedMountains } from "@/lib/mountain-taxonomy";
 import { getMountainBySlug, getMountains, getTipsByMountainId } from "@/lib/mountains";
-import { DEFAULT_OG_IMAGE_PATH, SITE_NAME, absoluteUrl, getMountainMetaDescription, getMountainSearchKeywords, serializeJsonLd } from "@/lib/seo";
+import {
+  DEFAULT_OG_IMAGE_PATH,
+  SITE_NAME,
+  absoluteUrl,
+  getDateQueryParamRobots,
+  getMountainImageAlt,
+  getMountainMetaDescription,
+  getMountainSearchKeywords,
+} from "@/lib/seo";
 
 export async function generateStaticParams() {
   return getMountains().map((mountain) => ({ slug: mountain.slug }));
 }
 
-export async function generateMetadata({ params }: Pick<PageProps<"/mountains/[slug]">, "params">): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Pick<PageProps<"/mountains/[slug]">, "params" | "searchParams">): Promise<Metadata> {
   const { slug } = await params;
   const mountain = getMountainBySlug(slug);
 
@@ -37,6 +48,9 @@ export async function generateMetadata({ params }: Pick<PageProps<"/mountains/[s
     };
   }
 
+  const resolvedSearchParams = await searchParams;
+  const dateParam = typeof resolvedSearchParams.date === "string" ? resolvedSearchParams.date : undefined;
+  const dateQueryRobots = getDateQueryParamRobots(dateParam);
   const pageUrl = `/mountains/${mountain.slug}`;
   const description = getMountainMetaDescription(mountain);
   const pageTitle = `${mountain.name} Hiking Guide and Weather Planner`;
@@ -48,6 +62,7 @@ export async function generateMetadata({ params }: Pick<PageProps<"/mountains/[s
     alternates: {
       canonical: pageUrl,
     },
+    ...(dateQueryRobots ? { robots: dateQueryRobots } : {}),
     openGraph: {
       type: "article",
       siteName: SITE_NAME,
@@ -72,6 +87,7 @@ export default async function MountainPage({ params }: PageProps<"/mountains/[sl
   }
 
   const tips = getTipsByMountainId(mountain.id);
+  const relatedMountains = getRelatedMountains(mountain);
   const faqs = getMountainFaqs(mountain);
   const orderedBestMonths = sortMountainBestMonths(mountain.best_months);
   const bestWindow = formatMountainMonthWindow(orderedBestMonths);
@@ -108,28 +124,25 @@ export default async function MountainPage({ params }: PageProps<"/mountains/[sl
           </li>
         </ol>
       </nav>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: serializeJsonLd(
-            buildMountainJsonLd({
-              mountain,
-              faqs,
-              homeUrl,
-              imageUrl,
-              pageDescription,
-              pageTitle,
-              pageUrl,
-              websiteId: absoluteUrl("/#website"),
-            }),
-          ),
-        }}
+      <JsonLdScript
+        id={`${mountain.slug}-json-ld`}
+        data={buildMountainJsonLd({
+          mountain,
+          faqs,
+          homeUrl,
+          imageUrl,
+          pageDescription,
+          pageTitle,
+          pageUrl,
+          websiteId: absoluteUrl("/#website"),
+        })}
       />
       <section className="overflow-hidden rounded-[32px] border border-slate-200/80 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.10)]">
         <div className="bg-[radial-gradient(circle_at_top_left,_rgba(14,116,144,0.10),_transparent_35%),linear-gradient(180deg,_rgba(248,250,252,0.96),_rgba(255,255,255,1))] p-5 sm:p-6">
           <MountainPhotoLightbox
             name={mountain.name}
             imageUrl={mountain.image_url}
+            imageAlt={getMountainImageAlt(mountain)}
             imageSourceUrl={mountain.image_source_url}
             objectPosition={getMountainImageObjectPosition(mountain.slug)}
           />
@@ -223,6 +236,13 @@ export default async function MountainPage({ params }: PageProps<"/mountains/[sl
           Use the forecast on this page for the exact hike date, then check the methodology and sources if you want the deeper details behind the guidance.
         </p>
       </section>
+      {relatedMountains.length > 0 ? (
+        <MountainLinkGrid
+          title={`Other mountains hikers often compare with ${mountain.name}`}
+          description={`Similar ${mountain.region} guides and nearby difficulty matches.`}
+          mountains={relatedMountains}
+        />
+      ) : null}
       <FaqSection
         title={`${mountain.name} hiking weather FAQ`}
         description="Common questions about checking the weather before your hike."

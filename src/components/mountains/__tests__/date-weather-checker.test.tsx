@@ -107,6 +107,10 @@ describe("DateWeatherChecker", () => {
       targetDateAvgPrecipitation: 2.5,
       targetDateWetDayChance: 50,
       targetDateSamples: 2,
+      targetDateSnapshots: [
+        { date: "2025-04-30", precipitationSum: 2.5, wasWet: true },
+        { date: "2024-04-30", precipitationSum: 2.5, wasWet: true },
+      ],
       note: "Last 2 years show mixed conditions for this month. Recheck weather near hike day.",
     },
     consensus: {
@@ -123,6 +127,60 @@ describe("DateWeatherChecker", () => {
     },
   };
 
+  const forecastDetailsPayload = {
+    date: "2026-03-25",
+    mode: "forecast",
+    history: {
+      periodStart: "2024-03-01",
+      periodEnd: "2026-02-28",
+      avgDailyPrecipitation: 1.5,
+      wetDayChance: 30,
+      targetMonthAvgPrecipitation: 2.1,
+      targetMonthWetDayChance: 35,
+      targetDateAvgPrecipitation: 0.5,
+      targetDateWetDayChance: 0,
+      targetDateSamples: 2,
+      targetDateSnapshots: [
+        { date: "2025-03-25", precipitationSum: 0, wasWet: false },
+        { date: "2024-03-25", precipitationSum: 1, wasWet: true },
+      ],
+      note: "Last 2 years show drier conditions for this month.",
+    },
+    consensus: {
+      primaryProvider: "Open-Meteo",
+      secondaryProvider: "Visual Crossing",
+      secondaryAvailable: true,
+      primaryRecommendation: "Good",
+      secondaryRecommendation: "Good",
+      secondaryMetrics: {
+        precipitationProbability: 10,
+        precipitationSum: 0,
+        windSpeedMax: 12,
+        temperatureMax: 27,
+        apparentTemperatureMax: 29,
+        weatherCode: 1,
+      },
+      primaryHikeWindowRain: {
+        label: "4am-2pm",
+        startHour: 4,
+        endHour: 14,
+        sampleHours: 11,
+        precipitationProbability: 0,
+        precipitationSum: 0,
+      },
+      secondaryHikeWindowRain: {
+        label: "4am-2pm",
+        startHour: 4,
+        endHour: 14,
+        sampleHours: 11,
+        precipitationProbability: 5,
+        precipitationSum: 0,
+      },
+      agreement: "aligned",
+      note: "Matches the main forecast above.",
+    },
+  };
+
   it("shows recommendation after date check", async () => {
     vi.spyOn(global, "fetch").mockResolvedValue(new Response(JSON.stringify(mockPayload), { status: 200 }));
 
@@ -136,9 +194,9 @@ describe("DateWeatherChecker", () => {
       expect(screen.getByText(/Exact forecast is day-specific up to 15 days/)).toBeInTheDocument();
       expect(screen.getByText(/Why this result/)).toBeInTheDocument();
       expect(screen.getAllByText(/How reliable/).length).toBeGreaterThan(0);
-      expect(screen.getByText(/No rain expected/)).toBeInTheDocument();
+      expect(screen.getByText("Dry")).toBeInTheDocument();
       expect(screen.getByText("None")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Cross-checks/i })).toHaveAttribute("aria-expanded", "false");
+      expect(screen.getByRole("button", { name: /Second opinion/i })).toHaveAttribute("aria-expanded", "false");
       expect(screen.queryByText(/Usually drier|Mixed month|Historically wet/)).not.toBeInTheDocument();
     });
   });
@@ -225,23 +283,47 @@ describe("DateWeatherChecker", () => {
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Second opinion/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("2-year history")).toBeInTheDocument();
+      expect(screen.getByText("Rain history")).toBeInTheDocument();
+      expect(screen.getByText("April 30, 2025")).toBeInTheDocument();
+      expect(screen.getByText("April 30, 2024")).toBeInTheDocument();
       expect(screen.getAllByText("42% wet days").length).toBeGreaterThan(0);
-      expect(screen.getByText(/^Same date$/)).toBeInTheDocument();
+      expect(screen.queryByText(/^Same date$/)).not.toBeInTheDocument();
       expect(screen.queryByText("Another forecast source")).not.toBeInTheDocument();
     });
 
     expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(fetchSpy).toHaveBeenLastCalledWith("/api/weather/check/details?lat=14.6&lon=121.1&date=2026-04-30");
 
-    fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Cross-checks/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Second opinion/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Second opinion/i }));
 
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("shows provider agreement when secondary forecast aligns", async () => {
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify(mockPayload), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(forecastDetailsPayload), { status: 200 }));
+
+    render(<DateWeatherChecker lat={14.6} lon={121.1} initialDate="2026-03-25" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Good")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Second opinion/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Good — matches main forecast")).toBeInTheDocument();
+      expect(screen.getByText("Matches the main forecast above.")).toBeInTheDocument();
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 });

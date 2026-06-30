@@ -8,7 +8,8 @@ import {
   SectionHeader,
 } from "@/components/layout/page-primitives";
 import { FaqSection } from "@/components/seo/faq-section";
-import { absoluteUrl, serializeJsonLd } from "@/lib/seo";
+import { JsonLdScript } from "@/components/seo/json-ld-script";
+import { absoluteUrl } from "@/lib/seo";
 import type { Mountain } from "@/types/hiking";
 
 type FaqItem = {
@@ -52,66 +53,64 @@ export function TaxonomyHubPage({
 
   return (
     <PageShell>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: serializeJsonLd({
-            "@context": "https://schema.org",
-            "@graph": [
-              {
-                "@type": "BreadcrumbList",
-                itemListElement: [
-                  {
-                    "@type": "ListItem",
-                    position: 1,
-                    name: "Home",
-                    item: absoluteUrl("/"),
-                  },
-                  {
-                    "@type": "ListItem",
-                    position: 2,
-                    name: breadcrumbLabel,
-                    item: pageUrl,
-                  },
-                ],
-              },
-              {
-                "@type": "CollectionPage",
-                "@id": `${pageUrl}#webpage`,
-                name: title,
-                description,
-                url: pageUrl,
-                isPartOf: {
-                  "@id": absoluteUrl("/#website"),
-                },
-              },
-              {
-                "@type": "ItemList",
-                name: title,
-                numberOfItems: mountains.length,
-                itemListOrder: "https://schema.org/ItemListUnordered",
-                url: pageUrl,
-                itemListElement: mountains.slice(0, 12).map((mountain, index) => ({
+      <JsonLdScript
+        id={`${pathname.replace(/\//g, "-").replace(/^-|-$/g, "")}-json-ld`}
+        data={{
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                {
                   "@type": "ListItem",
-                  position: index + 1,
-                  url: absoluteUrl(`/mountains/${mountain.slug}`),
-                  name: mountain.name,
-                })),
+                  position: 1,
+                  name: "Home",
+                  item: absoluteUrl("/"),
+                },
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: breadcrumbLabel,
+                  item: pageUrl,
+                },
+              ],
+            },
+            {
+              "@type": "CollectionPage",
+              "@id": `${pageUrl}#webpage`,
+              name: title,
+              description,
+              url: pageUrl,
+              isPartOf: {
+                "@id": absoluteUrl("/#website"),
               },
-              {
-                "@type": "FAQPage",
-                "@id": `${pageUrl}#faq`,
-                mainEntity: faqs.map((faq) => ({
-                  "@type": "Question",
-                  name: faq.question,
-                  acceptedAnswer: {
-                    "@type": "Answer",
-                    text: faq.answer,
-                  },
-                })),
-              },
-            ],
-          }),
+            },
+            {
+              "@type": "ItemList",
+              name: title,
+              numberOfItems: mountains.length,
+              itemListOrder: "https://schema.org/ItemListUnordered",
+              url: pageUrl,
+              itemListElement: mountains.slice(0, 12).map((mountain, index) => ({
+                "@type": "ListItem",
+                position: index + 1,
+                url: absoluteUrl(`/mountains/${mountain.slug}`),
+                name: mountain.name,
+              })),
+            },
+            {
+              "@type": "FAQPage",
+              "@id": `${pageUrl}#faq`,
+              mainEntity: faqs.map((faq) => ({
+                "@type": "Question",
+                name: faq.question,
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: faq.answer,
+                },
+              })),
+            },
+          ],
         }}
       />
       <Breadcrumb items={[{ label: "Home", href: "/" }, { label: breadcrumbLabel }]} />

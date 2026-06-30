@@ -8,6 +8,7 @@ import { getMountainImageLoadingProps } from "@/lib/mountain-image";
 type Props = {
   name: string;
   imageUrl: string;
+  imageAlt: string;
   imageSourceUrl?: string | null;
   objectPosition: string;
 };
@@ -23,7 +24,7 @@ function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(focusableSelector));
 }
 
-export function MountainPhotoLightbox({ name, imageUrl, imageSourceUrl, objectPosition }: Props) {
+export function MountainPhotoLightbox({ name, imageUrl, imageAlt, imageSourceUrl, objectPosition }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const dialogId = useId();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -112,7 +113,7 @@ export function MountainPhotoLightbox({ name, imageUrl, imageSourceUrl, objectPo
       >
         <Image
           src={imageUrl}
-          alt={name}
+          alt={imageAlt}
           fill
           className="object-cover transition duration-300 group-hover:scale-[1.02]"
           sizes="(max-width: 768px) 100vw, 960px"
@@ -154,7 +155,7 @@ export function MountainPhotoLightbox({ name, imageUrl, imageSourceUrl, objectPo
             <div className="relative aspect-[4/3] max-h-[75vh] overflow-hidden rounded-2xl bg-slate-100">
               <Image
                 src={imageUrl}
-                alt={name}
+                alt={imageAlt}
                 fill
                 className="object-contain"
                 sizes="100vw"

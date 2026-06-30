@@ -72,8 +72,22 @@ afterEach(() => {
 });
 
 describe("MountainListClient", () => {
+  it("renders the page title as the main heading", () => {
+    render(
+      <MountainListClient
+        mountains={mountains}
+        regions={["Luzon", "Mindanao"]}
+        pageTitle="Philippine Mountain Guides and Hiking Planner"
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Philippine Mountain Guides and Hiking Planner" }),
+    ).toBeInTheDocument();
+  });
+
   it("sorts mountains by popularity by default", () => {
-    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} />);
+    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} pageTitle="Philippine Mountain Guides and Hiking Planner" />);
 
     expect(screen.getByRole("heading", { level: 2, name: "Most popular first" })).toBeInTheDocument();
 
@@ -84,7 +98,7 @@ describe("MountainListClient", () => {
   });
 
   it("sorts mountains by exact difficulty score ascending when selected", async () => {
-    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} />);
+    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} pageTitle="Philippine Mountain Guides and Hiking Planner" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Sort mountains" }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "By difficulty" }));
@@ -98,7 +112,7 @@ describe("MountainListClient", () => {
   });
 
   it("filters mountains by search query", async () => {
-    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} />);
+    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} pageTitle="Philippine Mountain Guides and Hiking Planner" />);
 
     fireEvent.change(screen.getByLabelText("Search mountains"), {
       target: { value: "Apo" },
@@ -111,7 +125,7 @@ describe("MountainListClient", () => {
   });
 
   it("sorts mountains alphabetically", async () => {
-    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} />);
+    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} pageTitle="Philippine Mountain Guides and Hiking Planner" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Sort mountains" }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Alphabetical" }));
@@ -125,7 +139,7 @@ describe("MountainListClient", () => {
   });
 
   it("closes the sort menu on outside click", () => {
-    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} />);
+    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} pageTitle="Philippine Mountain Guides and Hiking Planner" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Sort mountains" }));
     expect(screen.getByRole("menu", { name: "Sort mountains options" })).toBeInTheDocument();
@@ -136,7 +150,7 @@ describe("MountainListClient", () => {
   });
 
   it("supports keyboard navigation in the sort menu", async () => {
-    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} />);
+    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} pageTitle="Philippine Mountain Guides and Hiking Planner" />);
 
     const trigger = screen.getByRole("button", { name: "Sort mountains" });
 
@@ -163,7 +177,7 @@ describe("MountainListClient", () => {
   });
 
   it("filters mountains by custom region menu", async () => {
-    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} />);
+    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} pageTitle="Philippine Mountain Guides and Hiking Planner" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Filter by region" }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Mindanao" }));
@@ -175,7 +189,7 @@ describe("MountainListClient", () => {
   });
 
   it("filters mountains by custom difficulty menu", async () => {
-    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} />);
+    render(<MountainListClient mountains={mountains} regions={["Luzon", "Mindanao"]} pageTitle="Philippine Mountain Guides and Hiking Planner" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Filter by difficulty" }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Advanced (7-8/9)" }));
@@ -191,6 +205,7 @@ describe("MountainListClient", () => {
       <MountainListClient
         mountains={mountains}
         regions={["Luzon", "Mindanao"]}
+        pageTitle="Philippine Mountain Guides and Hiking Planner"
         initialRegion="Luzon"
         initialDifficulty="Beginner"
         initialSortBy="popular"
@@ -209,6 +224,7 @@ describe("MountainListClient", () => {
       <MountainListClient
         mountains={mountains}
         regions={["Luzon", "Mindanao"]}
+        pageTitle="Philippine Mountain Guides and Hiking Planner"
         initialRegion="Luzon"
         initialDifficulty="Beginner"
         initialSortBy="popular"
@@ -236,6 +252,7 @@ describe("MountainListClient", () => {
       <MountainListClient
         mountains={mountains}
         regions={["Luzon", "Mindanao"]}
+        pageTitle="Philippine Mountain Guides and Hiking Planner"
         initialRegion="Luzon"
         initialDifficulty="Beginner"
         initialSortBy="popular"
@@ -257,6 +274,7 @@ describe("MountainListClient", () => {
       <MountainListClient
         mountains={mountains}
         regions={["Luzon", "Mindanao"]}
+        pageTitle="Philippine Mountain Guides and Hiking Planner"
         initialRegion="Luzon"
         initialDifficulty="Beginner"
         initialSortBy="popular"

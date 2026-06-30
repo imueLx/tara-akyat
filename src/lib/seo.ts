@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
+
 import type { Mountain } from "@/types/hiking";
 
+import { isValidDate } from "@/lib/date";
 import { formatMountainMonthWindow } from "@/lib/mountain-page-content";
 
 export const SITE_NAME = "Tara Akyat";
@@ -59,6 +62,18 @@ export function serializeJsonLd(payload: unknown): string {
 
 export function formatMountainLocation(mountain: Pick<Mountain, "province" | "region">): string {
   return `${mountain.province}, ${mountain.region}`;
+}
+
+export function getMountainImageAlt(mountain: Pick<Mountain, "name" | "province" | "region">): string {
+  return `${mountain.name} hiking trail in ${formatMountainLocation(mountain)}`;
+}
+
+export function getDateQueryParamRobots(dateParam: string | undefined): Metadata["robots"] | undefined {
+  if (dateParam && isValidDate(dateParam)) {
+    return { index: false, follow: true };
+  }
+
+  return undefined;
 }
 
 export function formatBestMonthsWindow(months: string[]): string | null {

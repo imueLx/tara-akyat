@@ -7,7 +7,8 @@ import {
   PageShell,
   SectionCard,
 } from "@/components/layout/page-primitives";
-import { DEFAULT_OG_IMAGE_PATH, SITE_NAME, absoluteUrl, getTrustPageDescription, serializeJsonLd } from "@/lib/seo";
+import { JsonLdScript } from "@/components/seo/json-ld-script";
+import { DEFAULT_OG_IMAGE_PATH, SITE_NAME, absoluteUrl, getTrustPageDescription } from "@/lib/seo";
 import { MAX_FORECAST_DAYS, MAX_PLANNING_DAYS, PRIMARY_DAYS, SECONDARY_PROVIDER_MAX_DAYS } from "@/lib/weather/service";
 
 const pageTitle = "Methodology and Forecast Limits";
@@ -39,41 +40,39 @@ export default function MethodologyPage() {
 
   return (
     <PageShell className="max-w-5xl">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: serializeJsonLd({
-            "@context": "https://schema.org",
-            "@graph": [
-              {
-                "@type": "BreadcrumbList",
-                itemListElement: [
-                  {
-                    "@type": "ListItem",
-                    position: 1,
-                    name: "Home",
-                    item: absoluteUrl("/"),
-                  },
-                  {
-                    "@type": "ListItem",
-                    position: 2,
-                    name: pageTitle,
-                    item: pageUrl,
-                  },
-                ],
-              },
-              {
-                "@type": "WebPage",
-                "@id": `${pageUrl}#webpage`,
-                name: pageTitle,
-                description: pageDescription,
-                url: pageUrl,
-                isPartOf: {
-                  "@id": absoluteUrl("/#website"),
+      <JsonLdScript
+        id="methodology-json-ld"
+        data={{
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                {
+                  "@type": "ListItem",
+                  position: 1,
+                  name: "Home",
+                  item: absoluteUrl("/"),
                 },
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: pageTitle,
+                  item: pageUrl,
+                },
+              ],
+            },
+            {
+              "@type": "WebPage",
+              "@id": `${pageUrl}#webpage`,
+              name: pageTitle,
+              description: pageDescription,
+              url: pageUrl,
+              isPartOf: {
+                "@id": absoluteUrl("/#website"),
               },
-            ],
-          }),
+            },
+          ],
         }}
       />
       <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Methodology" }]} />
@@ -93,7 +92,7 @@ export default function MethodologyPage() {
           </p>
         </SectionCard>
         <SectionCard>
-          <h2 className="text-base font-semibold tracking-tight text-foreground">Secondary cross-check</h2>
+          <h2 className="text-base font-semibold tracking-tight text-foreground">Second opinion (Visual Crossing)</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             If a Visual Crossing API key is configured, the app compares the short-range result against a second provider for the next {SECONDARY_PROVIDER_MAX_DAYS} days.
           </p>

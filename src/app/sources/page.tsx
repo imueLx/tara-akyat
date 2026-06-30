@@ -8,8 +8,9 @@ import {
   SectionCard,
   SectionHeader,
 } from "@/components/layout/page-primitives";
+import { JsonLdScript } from "@/components/seo/json-ld-script";
 import { getMountains, getTips } from "@/lib/mountains";
-import { DEFAULT_OG_IMAGE_PATH, SITE_NAME, absoluteUrl, getTrustPageDescription, serializeJsonLd } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE_PATH, SITE_NAME, absoluteUrl, getTrustPageDescription } from "@/lib/seo";
 
 const pageTitle = "Sources and Editorial Policy";
 const pageDescription = getTrustPageDescription("sources");
@@ -83,41 +84,39 @@ export default function SourcesPage() {
 
   return (
     <PageShell className="max-w-5xl">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: serializeJsonLd({
-            "@context": "https://schema.org",
-            "@graph": [
-              {
-                "@type": "BreadcrumbList",
-                itemListElement: [
-                  {
-                    "@type": "ListItem",
-                    position: 1,
-                    name: "Home",
-                    item: absoluteUrl("/"),
-                  },
-                  {
-                    "@type": "ListItem",
-                    position: 2,
-                    name: pageTitle,
-                    item: pageUrl,
-                  },
-                ],
-              },
-              {
-                "@type": "WebPage",
-                "@id": `${pageUrl}#webpage`,
-                name: pageTitle,
-                description: pageDescription,
-                url: pageUrl,
-                isPartOf: {
-                  "@id": absoluteUrl("/#website"),
+      <JsonLdScript
+        id="sources-json-ld"
+        data={{
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                {
+                  "@type": "ListItem",
+                  position: 1,
+                  name: "Home",
+                  item: absoluteUrl("/"),
                 },
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: pageTitle,
+                  item: pageUrl,
+                },
+              ],
+            },
+            {
+              "@type": "WebPage",
+              "@id": `${pageUrl}#webpage`,
+              name: pageTitle,
+              description: pageDescription,
+              url: pageUrl,
+              isPartOf: {
+                "@id": absoluteUrl("/#website"),
               },
-            ],
-          }),
+            },
+          ],
         }}
       />
       <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Sources" }]} />

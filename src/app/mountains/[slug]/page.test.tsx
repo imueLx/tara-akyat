@@ -23,8 +23,12 @@ vi.mock("@/components/mountains/mountain-photo-lightbox", () => ({
   MountainPhotoLightbox: () => <div>photo lightbox mock</div>,
 }));
 
-vi.mock("@/components/mountains/tips-list", () => ({
-  TipsList: () => <div>tips list mock</div>,
+vi.mock("@/components/seo/faq-section", () => ({
+  FaqSection: () => <div>faq section mock</div>,
+}));
+
+vi.mock("@/components/seo/mountain-link-grid", () => ({
+  MountainLinkGrid: ({ title }: { title: string }) => <div>{title}</div>,
 }));
 
 vi.mock("@/lib/mountain-image", () => ({
@@ -43,7 +47,17 @@ describe("mountain page", () => {
 
     expect(screen.getByRole("heading", { level: 2, name: /One quick planning note for Mt\. Ulap/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Methodology" })).toHaveAttribute("href", "/methodology");
-    expect(screen.queryByText(/Other mountains hikers often compare with Mt\. Ulap/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Other mountains hikers often compare with Mt\. Ulap/i)).toBeInTheDocument();
+  });
+
+  it("returns noindex metadata when a date query param is present", async () => {
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ slug: "mt-ulap" }),
+      searchParams: Promise.resolve({ date: "2026-04-30" }),
+    });
+
+    expect(metadata.robots).toEqual({ index: false, follow: true });
+    expect(metadata.alternates?.canonical).toBe("/mountains/mt-ulap");
   });
 
   it("returns non-indexable metadata for an unknown mountain slug", async () => {

@@ -192,8 +192,8 @@ async function getCheckDetailsUncached(lat: number, lon: number, date: string): 
         secondaryHikeWindowRain,
         agreement: aligned ? "aligned" : "mixed",
         note: aligned
-          ? "Another forecast source points to the same hiking result."
-          : "Another forecast source points to a different result. Recheck closer to hike day.",
+          ? "Matches the main forecast above."
+          : "Differs from the main forecast above. Recheck closer to hike day.",
       };
     }
   }
@@ -216,7 +216,7 @@ export async function getCheckDetails(lat: number, lon: number, date: string): P
 
   return unstable_cache(
     async () => getCheckDetailsUncached(lat, lon, date),
-    ["weather-check-details", latKey, lonKey, date],
+    ["weather-check-details-v2", latKey, lonKey, date],
     { revalidate: WEATHER_DETAILS_REVALIDATE_SECONDS },
   )();
 }

@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 
 import { MountainListClient } from "@/components/mountains/mountain-list-client";
+import { JsonLdScript } from "@/components/seo/json-ld-script";
 import { getMountains, getRegions } from "@/lib/mountains";
 import {
   DEFAULT_OG_IMAGE_PATH,
   SITE_NAME,
   absoluteUrl,
   getBrowsePageDescription,
-  serializeJsonLd,
 } from "@/lib/seo";
 
 const mountains = getMountains();
@@ -47,57 +47,62 @@ export const metadata: Metadata = {
 export default function MountainsBrowsePage() {
   return (
     <div className="min-h-screen pb-8">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: serializeJsonLd({
-            "@context": "https://schema.org",
-            "@graph": [
-              {
-                "@type": "BreadcrumbList",
-                itemListElement: [
-                  {
-                    "@type": "ListItem",
-                    position: 1,
-                    name: "Home",
-                    item: absoluteUrl("/"),
-                  },
-                  {
-                    "@type": "ListItem",
-                    position: 2,
-                    name: "Mountains",
-                    item: absoluteUrl("/mountains"),
-                  },
-                ],
-              },
-              {
-                "@type": "CollectionPage",
-                "@id": absoluteUrl("/mountains#webpage"),
-                name: browsePageTitle,
-                description: browsePageDescription,
-                url: absoluteUrl("/mountains"),
-                isPartOf: {
-                  "@id": absoluteUrl("/#website"),
-                },
-              },
-              {
-                "@type": "ItemList",
-                name: "Philippine Mountains",
-                numberOfItems: mountains.length,
-                itemListOrder: "https://schema.org/ItemListUnordered",
-                url: absoluteUrl("/mountains"),
-                itemListElement: mountains.slice(0, 100).map((mountain, index) => ({
+      <JsonLdScript
+        id="mountains-json-ld"
+        data={{
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                {
                   "@type": "ListItem",
-                  position: index + 1,
-                  url: absoluteUrl(`/mountains/${mountain.slug}`),
-                  name: mountain.name,
-                })),
+                  position: 1,
+                  name: "Home",
+                  item: absoluteUrl("/"),
+                },
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: "Mountains",
+                  item: absoluteUrl("/mountains"),
+                },
+              ],
+            },
+            {
+              "@type": "CollectionPage",
+              "@id": absoluteUrl("/mountains#webpage"),
+              name: browsePageTitle,
+              description: browsePageDescription,
+              url: absoluteUrl("/mountains"),
+              isPartOf: {
+                "@id": absoluteUrl("/#website"),
               },
-            ],
-          }),
+            },
+            {
+              "@type": "ItemList",
+              name: "Philippine Mountains",
+              numberOfItems: mountains.length,
+              itemListOrder: "https://schema.org/ItemListUnordered",
+              url: absoluteUrl("/mountains"),
+              itemListElement: mountains.slice(0, 100).map((mountain, index) => ({
+                "@type": "ListItem",
+                position: index + 1,
+                url: absoluteUrl(`/mountains/${mountain.slug}`),
+                name: mountain.name,
+              })),
+            },
+          ],
         }}
       />
-      <MountainListClient mountains={mountains} regions={regions} initialRegion="Luzon" initialDifficulty="Beginner" initialSortBy="popular" />
+      <MountainListClient
+        mountains={mountains}
+        regions={regions}
+        pageTitle={browsePageTitle}
+        initialRegion="Luzon"
+        initialDifficulty="Beginner"
+        initialSortBy="popular"
+      />
     </div>
   );
 }
