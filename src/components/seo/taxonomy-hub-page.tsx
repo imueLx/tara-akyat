@@ -23,6 +23,12 @@ type SupportLink = {
   description: string;
 };
 
+type StarterPick = {
+  href: string;
+  name: string;
+  reason: string;
+};
+
 type Props = {
   eyebrow: string;
   title: string;
@@ -34,6 +40,7 @@ type Props = {
   mountains: Mountain[];
   emptyState: string;
   supportLinks?: readonly SupportLink[];
+  starterPicks?: readonly StarterPick[];
 };
 
 export function TaxonomyHubPage({
@@ -47,6 +54,7 @@ export function TaxonomyHubPage({
   mountains,
   emptyState,
   supportLinks = [],
+  starterPicks = [],
 }: Props) {
   const featuredMountains = mountains.slice(0, 12);
   const pageUrl = absoluteUrl(pathname);
@@ -132,6 +140,28 @@ export function TaxonomyHubPage({
           </Link>
         </div>
       </PageHero>
+
+      {starterPicks.length > 0 ? (
+        <SectionCard className="mt-5">
+          <SectionHeader
+            eyebrow="Starter picks"
+            title="Popular beginner hikes to compare first"
+            description="A short shortlist before you open the full guide and date checker."
+          />
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {starterPicks.map((pick) => (
+              <Link
+                key={pick.href}
+                href={pick.href}
+                className="rounded-[18px] border border-border bg-secondary px-4 py-4 transition hover:border-slate-300 hover:bg-card"
+              >
+                <h3 className="text-base font-semibold tracking-tight text-foreground">{pick.name}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{pick.reason}</p>
+              </Link>
+            ))}
+          </div>
+        </SectionCard>
+      ) : null}
 
       {supportLinks.length > 0 ? (
         <section className="mt-5 grid gap-3 lg:grid-cols-3">

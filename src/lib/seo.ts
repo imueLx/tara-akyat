@@ -89,7 +89,11 @@ export function getBrowsePageDescription(mountainCount: number, regions: string[
 }
 
 export function getHomeMetaDescription(mountainCount: number, regions: string[]): string {
-  return `Check hiking weather by date for ${mountainCount} Philippine mountains across ${regions.join(", ")}. Helpful for searches like uulan ba bukas, weather sa Mt. Ulap, and best hiking months before your trip.`;
+  return `Plan Philippine hikes with date-based weather checks, beginner mountain guides, and best-month planning for ${mountainCount} mountains across ${regions.join(", ")}. Built for trip planning—not generic city forecasts.`;
+}
+
+export function getHomePageTitle(): string {
+  return "Philippines Hiking Planner — Beginner Guides & Weather by Date";
 }
 
 export function getRegionPageDescription(region: string, mountainCount: number): string {
@@ -100,8 +104,20 @@ export function getMonthPageDescription(month: string, mountainCount: number): s
   return `Philippine mountain guides for hikes commonly planned in ${month}. Explore ${mountainCount} matching mountains, best months, and weather-by-date planning before you go.`;
 }
 
-export function getDifficultyPageDescription(levelName: string, mountainCount: number): string {
-  return `${levelName} Philippine mountain guides for ${mountainCount} hikes. Use this page to shortlist mountains by route difficulty, best months, and weather planning support.`;
+export function getDifficultyPageTitle(levelSlug: string, levelName: string, mountainCount: number): string {
+  if (levelSlug === "beginner") {
+    return `Beginner Hikes in the Philippines — ${mountainCount} Mountain Guides`;
+  }
+
+  return `${levelName} Philippine Mountain Guides`;
+}
+
+export function getDifficultyPageDescription(levelSlug: string, levelName: string, mountainCount: number): string {
+  if (levelSlug === "beginner") {
+    return `Hiking for beginners in the Philippines: compare ${mountainCount} approachable day hikes with best months, difficulty notes, and date-based weather planning before your first climb.`;
+  }
+
+  return `${levelName} Philippine mountain guides for ${mountainCount} hikes. Shortlist mountains by route difficulty, best months, and weather planning support.`;
 }
 
 export function getTrustPageDescription(page: "about" | "methodology" | "sources"): string {
@@ -116,45 +132,66 @@ export function getTrustPageDescription(page: "about" | "methodology" | "sources
   return "Review the source approach, editorial standards, and reference links behind Tara Akyat mountain guides and hiking weather content.";
 }
 
+export function isBeginnerMountain(mountain: Pick<Mountain, "difficulty_score">): boolean {
+  return mountain.difficulty_score <= 3;
+}
+
+export function getMountainPageTitle(mountain: Mountain): string {
+  const bestMonthsWindow = formatBestMonthsWindow(mountain.best_months);
+  const monthsSnippet = bestMonthsWindow && bestMonthsWindow !== "Year-round" ? ` — Best Months: ${bestMonthsWindow}` : "";
+
+  return `${mountain.name} Hiking Guide${monthsSnippet}`;
+}
+
 export function getMountainMetaDescription(mountain: Mountain): string {
   const bestMonthsWindow = formatBestMonthsWindow(mountain.best_months);
-  const bestMonthsSnippet = bestMonthsWindow ? ` Typical hiking window: ${bestMonthsWindow}.` : "";
+  const bestMonthsSnippet = bestMonthsWindow ? ` Best hiking window: ${bestMonthsWindow}.` : "";
+  const beginnerSnippet = isBeginnerMountain(mountain) ? " Often picked for beginner hikes in the Philippines." : "";
 
-  return `${mountain.name} hiking guide for ${formatMountainLocation(mountain)}. Check weather by date, elevation, ${mountain.difficulty.toLowerCase()} difficulty (${mountain.difficulty_score}/9), best hiking months, and trail notes before your hike.${bestMonthsSnippet}`;
+  return `${mountain.name} hiking guide for ${formatMountainLocation(mountain)}.${beginnerSnippet} Plan your climb with best months, ${mountain.difficulty.toLowerCase()} difficulty (${mountain.difficulty_score}/9), elevation, and date-based weather checks before you go.${bestMonthsSnippet}`;
 }
 
 export function getHomeSearchKeywords(featuredMountainNames: string[]): string[] {
   return [
+    "Philippines hiking planner",
+    "hiking for beginners Philippines",
+    "beginner hike Philippines",
+    "beginner mountain hikes Philippines",
     "Philippines hiking weather",
-    "mountain weather Philippines",
     "hiking weather by date",
     "uulan ba bukas",
     "uulan ba sa bundok",
     "safe ba mag hike bukas",
     "weather check bago mag hike",
-    "bundok weather forecast",
     ...featuredMountainNames.flatMap((name) => [
-      `${name} weather`,
-      `${name} weather bukas`,
-      `uulan ba sa ${name}`,
+      `${name} hiking guide`,
       `best months sa ${name}`,
+      `uulan ba sa ${name}`,
     ]),
   ];
 }
 
 export function getMountainSearchKeywords(mountain: Mountain): string[] {
-  return [
-    `${mountain.name} weather`,
-    `${mountain.name} weather tomorrow`,
-    `${mountain.name} weather bukas`,
-    `uulan ba sa ${mountain.name}`,
+  const keywords = [
+    `${mountain.name} hiking guide`,
     `${mountain.name} best months`,
     `best months sa ${mountain.name}`,
-    `${mountain.name} hiking guide`,
+    `${mountain.name} hiking weather`,
+    `uulan ba sa ${mountain.name}`,
     `${mountain.name} difficulty`,
     `${mountain.name} elevation`,
-    `${mountain.name} date hike`,
+    `${mountain.name} hike planning`,
   ];
+
+  if (isBeginnerMountain(mountain)) {
+    keywords.push(
+      `${mountain.name} beginner hike`,
+      `is ${mountain.name} good for beginners`,
+      `beginner hike ${mountain.province}`,
+    );
+  }
+
+  return keywords;
 }
 
 export function getRegionSearchKeywords(region: string): string[] {
@@ -176,8 +213,21 @@ export function getMonthSearchKeywords(month: string): string[] {
   ];
 }
 
-export function getDifficultySearchKeywords(levelName: string): string[] {
+export function getDifficultySearchKeywords(levelSlug: string, levelName: string): string[] {
   const normalizedLevel = levelName.toLowerCase();
+
+  if (levelSlug === "beginner") {
+    return [
+      "hiking for beginners Philippines",
+      "beginner hike Philippines",
+      "beginner hiking Philippines",
+      "beginner mountain hikes Philippines",
+      "mountain hiking for beginners Philippines",
+      "hike for beginners Philippines",
+      "first time hiking Philippines",
+      "easy hikes Philippines",
+    ];
+  }
 
   return [
     `${normalizedLevel} hikes Philippines`,

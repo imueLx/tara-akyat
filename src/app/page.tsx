@@ -16,6 +16,7 @@ import {
   absoluteUrl,
   getDateQueryParamRobots,
   getHomeMetaDescription,
+  getHomePageTitle,
   getHomeSearchKeywords,
 } from "@/lib/seo";
 
@@ -26,7 +27,7 @@ const featuredMountains = ["mt-ulap", "mt-pulag", "mt-apo", "mt-daraitan"].flatM
   const mountain = getMountainBySlug(slug);
   return mountain ? [mountain] : [];
 });
-const homeTitle = "Philippines Hiking Weather Planner and Mountain Guides";
+const homeTitle = getHomePageTitle();
 const homeDescription = getHomeMetaDescription(mountainCount, regionNames);
 const homeKeywords = getHomeSearchKeywords(featuredMountains.map((mountain) => mountain.name));
 const plannerMountains = mountains.map((mountain) => ({
@@ -196,11 +197,25 @@ export default function Home() {
       <div className="mb-6 rounded-[24px] border border-border bg-card/90 px-4 py-5 shadow-[0_12px_28px_rgba(15,23,42,0.04)] sm:px-6 sm:py-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-700">Tara Akyat</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-          Philippines hiking weather planner
+          Philippines hiking planner
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-[15px]">
-          Plan safer hikes across {regionNames.join(", ")}. Search a mountain, pick your date, and get a hike-specific weather read before you go.
+          Plan safer hikes across {regionNames.join(", ")}. Compare beginner mountains, pick your date, and get a hike-specific weather read before you go.
         </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            href="/difficulty/beginner"
+            className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-800 transition hover:border-sky-300 hover:bg-sky-100"
+          >
+            Beginner hikes in the Philippines
+          </Link>
+          <Link
+            href="/mountains"
+            className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-slate-300"
+          >
+            Browse all {mountainCount} mountains
+          </Link>
+        </div>
       </div>
 
       <Suspense fallback={<HomePlannerShell mountainCount={plannerMountains.length} />}>

@@ -1,5 +1,7 @@
 import type { Mountain } from "@/types/hiking";
 
+import { isBeginnerMountain } from "@/lib/seo";
+
 const monthOrder = [
   "January",
   "February",
@@ -33,7 +35,7 @@ type MountainJsonLdSource = Pick<
   "name" | "summary" | "lat" | "lon" | "province" | "slug" | "elevation_m" | "difficulty_score"
 >;
 
-type MountainCopySource = Pick<Mountain, "name" | "best_months">;
+type MountainCopySource = Pick<Mountain, "name" | "best_months" | "difficulty_score" | "difficulty" | "elevation_m">;
 
 function getMonthIndex(month: string): number {
   const index = monthOrder.indexOf(month as MonthName);
@@ -109,10 +111,19 @@ export function getMountainWeatherPlanningCopy(mountainName: string): string {
   return `Use the date checker on this page for ${mountainName} when you want an answer to questions like "uulan ba" or whether the day looks workable for hiking. Short-range dates are better for go or no-go decisions, while longer-range dates should be treated as planning guidance only.`;
 }
 
+export function getMountainBeginnerSuitability(mountain: MountainCopySource): string | null {
+  if (!isBeginnerMountain(mountain)) {
+    return null;
+  }
+
+  return `${mountain.name} is grouped here as a ${mountain.difficulty.toLowerCase()} hike (difficulty score ${mountain.difficulty_score}/9), which makes it a common shortlist pick for newer hikers in the Philippines. Still check the exact hike date, heat, and trail conditions—an easier score does not remove weather risk on ridge sections.`;
+}
+
 export function getMountainFaqs(mountain: MountainCopySource): MountainPageFaq[] {
   const orderedBestMonths = sortMountainBestMonths(mountain.best_months);
+  const beginnerSuitability = getMountainBeginnerSuitability(mountain);
 
-  return [
+  const faqs: MountainPageFaq[] = [
     {
       question: `Paano mag-check kung uulan ba sa ${mountain.name}?`,
       answer: `Use the date-based weather checker on this page, then choose your target hike date for ${mountain.name}. That gives you a more useful hiking answer than a generic nearby city forecast.`,
@@ -133,6 +144,15 @@ export function getMountainFaqs(mountain: MountainCopySource): MountainPageFaq[]
       answer: `Not always. Mountain weather can feel different because of elevation, terrain, rain exposure, and wind. It is safer to use a mountain-specific check for ${mountain.name} instead of relying only on a city forecast.`,
     },
   ];
+
+  if (beginnerSuitability) {
+    faqs.push({
+      question: `Is ${mountain.name} good for beginner hikers in the Philippines?`,
+      answer: beginnerSuitability,
+    });
+  }
+
+  return faqs;
 }
 
 export function buildMountainJsonLd(params: {

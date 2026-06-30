@@ -2,8 +2,15 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { TaxonomyHubPage } from "@/components/seo/taxonomy-hub-page";
+import { getBeginnerHubFaqs, getBeginnerHubIntro, getBeginnerHubPicks } from "@/lib/beginner-hub-content";
 import { getActiveMonthHubs, getDifficultyHubBySlug, getDifficultyHubs, getMountainsForDifficultySlug, getRegionHubs } from "@/lib/mountain-taxonomy";
-import { DEFAULT_OG_IMAGE_PATH, SITE_NAME, getDifficultyPageDescription, getDifficultySearchKeywords } from "@/lib/seo";
+import {
+  DEFAULT_OG_IMAGE_PATH,
+  SITE_NAME,
+  getDifficultyPageDescription,
+  getDifficultyPageTitle,
+  getDifficultySearchKeywords,
+} from "@/lib/seo";
 
 type Props = {
   params: Promise<{ level: string }>;
@@ -28,15 +35,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const mountains = getMountainsForDifficultySlug(level);
-  const title = `${hub.name} Philippine Mountain Guides`;
-  const description = getDifficultyPageDescription(hub.name, mountains.length);
+  const title = getDifficultyPageTitle(level, hub.name, mountains.length);
+  const description = getDifficultyPageDescription(level, hub.name, mountains.length);
   const image = mountains[0]?.image_url ?? DEFAULT_OG_IMAGE_PATH;
   const pathname = `/difficulty/${level}`;
 
   return {
     title,
     description,
-    keywords: getDifficultySearchKeywords(hub.name),
+    keywords: getDifficultySearchKeywords(level, hub.name),
     alternates: {
       canonical: pathname,
     },
@@ -65,35 +72,44 @@ export default async function DifficultyHubPage({ params }: Props) {
   }
 
   const mountains = getMountainsForDifficultySlug(level);
-  const description = getDifficultyPageDescription(hub.name, mountains.length);
-  const faqs = [
-    {
-      question: `What counts as a ${hub.name.toLowerCase()} hike here?`,
-      answer: `This page groups mountains with difficulty scores that fit the ${hub.name.toLowerCase()} bucket. It is a planning shortcut, not a guarantee, because trail condition and weather can still make an easier route feel harder.`,
-    },
-    {
-      question: `Can beginners rely on the ${hub.name.toLowerCase()} label alone?`,
-      answer: `No. Always read the full mountain page, check the target date weather, and factor in heat, rain, ridge exposure, and your own hiking experience before deciding.`,
-    },
-    {
-      question: `Does this help with searches like '${hub.name.toLowerCase()} hikes Philippines'?`,
-      answer: `Yes. The hub is designed to help hikers compare mountains by effort level, then open more detailed guides with weather planning support.`,
-    },
-  ] as const;
+  const description = getDifficultyPageDescription(level, hub.name, mountains.length);
+  const isBeginnerHub = level === "beginner";
+  const intro = isBeginnerHub ? getBeginnerHubIntro(mountains.length) : [hub.description, `Use this page when your search starts with difficulty rather than a specific mountain. It helps narrow the shortlist before you compare full guides and weather for your target hike date.`];
+  const faqs = isBeginnerHub
+    ? getBeginnerHubFaqs(mountains.length)
+    : ([
+        {
+          question: `What counts as a ${hub.name.toLowerCase()} hike here?`,
+          answer: `This page groups mountains with difficulty scores that fit the ${hub.name.toLowerCase()} bucket. It is a planning shortcut, not a guarantee, because trail condition and weather can still make an easier route feel harder.`,
+        },
+        {
+          question: `Can beginners rely on the ${hub.name.toLowerCase()} label alone?`,
+          answer: `No. Always read the full mountain page, check the target date weather, and factor in heat, rain, ridge exposure, and your own hiking experience before deciding.`,
+        },
+        {
+          question: `Does this help with searches like '${hub.name.toLowerCase()} hikes Philippines'?`,
+          answer: `Yes. The hub is designed to help hikers compare mountains by effort level, then open more detailed guides with weather planning support.`,
+        },
+      ] as const);
+  const starterPicks = isBeginnerHub
+    ? getBeginnerHubPicks(mountains).map((pick) => ({
+        href: `/mountains/${pick.mountain.slug}`,
+        name: pick.mountain.name,
+        reason: pick.reason,
+      }))
+    : [];
 
   return (
     <TaxonomyHubPage
-      eyebrow="Difficulty Hub"
-      title={`${hub.name} Philippine mountain guides`}
+      eyebrow={isBeginnerHub ? "Beginner hiking hub" : "Difficulty Hub"}
+      title={getDifficultyPageTitle(level, hub.name, mountains.length)}
       description={description}
       pathname={`/difficulty/${level}`}
-      breadcrumbLabel={hub.name}
-      intro={[
-        hub.description,
-        `Use this page when your search starts with difficulty rather than a specific mountain. It helps narrow the shortlist before you compare full guides and weather for your target hike date.`,
-      ]}
+      breadcrumbLabel={isBeginnerHub ? "Beginner hikes" : hub.name}
+      intro={intro}
       faqs={faqs}
       mountains={mountains}
+      starterPicks={starterPicks}
       emptyState={`There are no mountain guides in the ${hub.name.toLowerCase()} bucket yet.`}
       supportLinks={[
         ...(getRegionHubs()[0]

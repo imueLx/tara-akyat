@@ -7,6 +7,7 @@ import { DateWeatherCheckerShell } from "@/components/mountains/date-weather-che
 import { DateWeatherQueryBridge } from "@/components/mountains/date-weather-query-bridge";
 import { DifficultyPill } from "@/components/mountains/difficulty-pill";
 import { MountainPhotoLightbox } from "@/components/mountains/mountain-photo-lightbox";
+import { MountainPlanningOutlook } from "@/components/mountains/mountain-planning-outlook";
 import { TipsList } from "@/components/mountains/tips-list";
 import { FaqSection } from "@/components/seo/faq-section";
 import { JsonLdScript } from "@/components/seo/json-ld-script";
@@ -27,6 +28,7 @@ import {
   getDateQueryParamRobots,
   getMountainImageAlt,
   getMountainMetaDescription,
+  getMountainPageTitle,
   getMountainSearchKeywords,
 } from "@/lib/seo";
 
@@ -53,7 +55,7 @@ export async function generateMetadata({ params, searchParams }: Pick<PageProps<
   const dateQueryRobots = getDateQueryParamRobots(dateParam);
   const pageUrl = `/mountains/${mountain.slug}`;
   const description = getMountainMetaDescription(mountain);
-  const pageTitle = `${mountain.name} Hiking Guide and Weather Planner`;
+  const pageTitle = getMountainPageTitle(mountain);
 
   return {
     title: pageTitle,
@@ -92,7 +94,7 @@ export default async function MountainPage({ params }: PageProps<"/mountains/[sl
   const orderedBestMonths = sortMountainBestMonths(mountain.best_months);
   const bestWindow = formatMountainMonthWindow(orderedBestMonths);
   const pageUrl = absoluteUrl(`/mountains/${mountain.slug}`);
-  const pageTitle = `${mountain.name} Hiking Guide and Weather Planner`;
+  const pageTitle = getMountainPageTitle(mountain);
   const pageDescription = getMountainMetaDescription(mountain);
   const imageUrl = absoluteUrl(mountain.image_url || DEFAULT_OG_IMAGE_PATH);
   const homeUrl = absoluteUrl("/");
@@ -196,6 +198,7 @@ export default async function MountainPage({ params }: PageProps<"/mountains/[sl
           </div>
         </div>
       </section>
+      <MountainPlanningOutlook mountain={mountain} />
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.05fr,0.95fr]">
         <Suspense fallback={<DateWeatherCheckerShell />}>
           <DateWeatherQueryBridge lat={mountain.lat} lon={mountain.lon} />

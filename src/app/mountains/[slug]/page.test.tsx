@@ -45,6 +45,7 @@ describe("mountain page", () => {
   it("renders the slimmer planning layout", async () => {
     render(await MountainPage({ params: Promise.resolve({ slug: "mt-ulap" }) }));
 
+    expect(screen.getByRole("heading", { level: 2, name: /When to hike Mt\. Ulap/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: /One quick planning note for Mt\. Ulap/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Methodology" })).toHaveAttribute("href", "/methodology");
     expect(screen.getByText(/Other mountains hikers often compare with Mt\. Ulap/i)).toBeInTheDocument();
